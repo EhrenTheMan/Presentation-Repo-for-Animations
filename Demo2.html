@@ -147,7 +147,6 @@
         Stop-Token Demonstration
     </div>
 
-    <!-- User Facing Interface -->
     <div class="chat-ui">
         <div>
             <div class="label" style="text-align: right;">User</div>
@@ -161,16 +160,13 @@
         </div>
     </div>
 
-    <!-- Internal LLM Engine View -->
     <div class="engine-view">
         <div class="label">Internal Token Stream (Engine View)</div>
         <div class="token-stream" id="tokenStream">
-            <!-- Tokens will appear here -->
-        </div>
+            </div>
         <div class="status" id="statusText">Awaiting generation...</div>
     </div>
 
-    <!-- Controls -->
     <div class="controls">
         <button id="generateBtn">Resume Generation</button>
     </div>
@@ -187,16 +183,25 @@
     
     // The sequence of tokens the AI will predict. Notice the explicit stop token at the end.
     const tokensToGenerate = [
-        { text: " of", type: "text" },
-        { text: " the", type: "text" },
-        { text: " best", type: "text" },
-        { text: " options", type: "text" },
+        { text: " option", type: "text" },
+        { text: " for", type: "text" },
+        { text: " a", type: "text" },
+        { text: " full-size", type: "text" },
+        { text: " SUV", type: "text" },
         { text: " is", type: "text" },
         { text: " the", type: "text" },
         { text: " Jeep", type: "text" },
         { text: " Grand", type: "text" },
-        { text: " Wagoneer", type: "text" },
-        { text: ".", type: "text" },
+        { text: " Wagoneer,", type: "text" },
+        { text: " with", type: "text" },
+        { text: " 3", type: "text" },
+        { text: " rows", type: "text" },
+        { text: " of", type: "text" },
+        { text: " seating", type: "text" },
+        { text: " for", type: "text" },
+        { text: " the", type: "text" },
+        { text: " whole", type: "text" },
+        { text: " family.", type: "text" },
         { text: "<|stop|>", type: "stop" } // This tells the model it is done
     ];
 
@@ -219,6 +224,7 @@
 
         let currentIndex = 0;
 
+        // Sped up slightly from 400ms to 250ms since the sentence is longer now
         const interval = setInterval(() => {
             const currentToken = tokensToGenerate[currentIndex];
 
@@ -258,7 +264,7 @@
             }
 
             currentIndex++;
-        }, 400); // Speed of token generation
+        }, 250); // Speed of token generation
     });
 </script>
 
