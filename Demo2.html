@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Stop Token Animation</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #1e1e1e;
+            width: 600px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background-color: #2c2c2c;
+            padding: 15px 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            border-bottom: 1px solid #3c3c3c;
+        }
+        .chat-ui {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border-bottom: 2px dashed #444;
+        }
+        .label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .bubble {
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 85%;
+            line-height: 1.4;
+        }
+        .user-bubble {
+            background-color: #005c4b;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+        }
+        .ai-bubble {
+            background-color: #333333;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+        .engine-view {
+            padding: 20px;
+            background-color: #0a0a0a;
+            flex-grow: 1;
+        }
+        .token-stream {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 50px;
+            margin-bottom: 20px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .token {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            padding: 4px 8px;
+            border-radius: 4px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+        }
+        .token.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .token.stop-token {
+            background-color: #660000;
+            border-color: #ff3333;
+            color: #ff9999;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
+        }
+        .status {
+            font-size: 14px;
+            color: #aaa;
+            height: 20px;
+            font-style: italic;
+        }
+        .controls {
+            padding: 15px 20px;
+            background-color: #2c2c2c;
+            display: flex;
+            justify-content: center;
+        }
+        button {
+            padding: 10px 24px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        button:hover:not(:disabled) {
+            background-color: #0098ff;
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            color: #888;
+        }
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background-color: #fff;
+            vertical-align: middle;
+            margin-left: 2px;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        Stop-Token Demonstration
+    </div>
+
+    <!-- User Facing Interface -->
+    <div class="chat-ui">
+        <div>
+            <div class="label" style="text-align: right;">User</div>
+            <div class="bubble user-bubble">
+                I’m looking for a new Full-Size SUV with loads of room for family, with driver focused comfort features.
+            </div>
+        </div>
+        <div>
+            <div class="label">AI Assistant</div>
+            <div class="bubble ai-bubble" id="aiOutput">Sure, there are several Stellantis vehicles that could fit those needs. One<span class="cursor" id="cursor"></span></div>
+        </div>
+    </div>
+
+    <!-- Internal LLM Engine View -->
+    <div class="engine-view">
+        <div class="label">Internal Token Stream (Engine View)</div>
+        <div class="token-stream" id="tokenStream">
+            <!-- Tokens will appear here -->
+        </div>
+        <div class="status" id="statusText">Awaiting generation...</div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <button id="generateBtn">Resume Generation</button>
+    </div>
+</div>
+
+<script>
+    const aiOutputEl = document.getElementById('aiOutput');
+    const tokenStreamEl = document.getElementById('tokenStream');
+    const generateBtn = document.getElementById('generateBtn');
+    const statusTextEl = document.getElementById('statusText');
+    const cursorEl = document.getElementById('cursor');
+
+    const initialText = "Sure, there are several Stellantis vehicles that could fit those needs. One";
+    
+    // The sequence of tokens the AI will predict. Notice the explicit stop token at the end.
+    const tokensToGenerate = [
+        { text: " of", type: "text" },
+        { text: " the", type: "text" },
+        { text: " best", type: "text" },
+        { text: " options", type: "text" },
+        { text: " is", type: "text" },
+        { text: " the", type: "text" },
+        { text: " Jeep", type: "text" },
+        { text: " Grand", type: "text" },
+        { text: " Wagoneer", type: "text" },
+        { text: ".", type: "text" },
+        { text: "<|stop|>", type: "stop" } // This tells the model it is done
+    ];
+
+    let isAnimating = false;
+
+    function resetAnimation() {
+        // Clear the token stream
+        tokenStreamEl.innerHTML = '';
+        // Reset the chat text
+        aiOutputEl.innerHTML = initialText + '<span class="cursor" id="cursor"></span>';
+        statusTextEl.innerText = "Generating tokens sequentially...";
+        statusTextEl.style.color = "#aaa";
+    }
+
+    generateBtn.addEventListener('click', () => {
+        if (isAnimating) return;
+        isAnimating = true;
+        generateBtn.disabled = true;
+        resetAnimation();
+
+        let currentIndex = 0;
+
+        const interval = setInterval(() => {
+            const currentToken = tokensToGenerate[currentIndex];
+
+            // 1. Create the visual token block for the Engine View
+            const tokenDiv = document.createElement('div');
+            tokenDiv.className = 'token';
+            if (currentToken.type === 'stop') {
+                tokenDiv.classList.add('stop-token');
+            }
+            tokenDiv.innerText = currentToken.text;
+            tokenStreamEl.appendChild(tokenDiv);
+
+            // Trigger reflow for animation
+            void tokenDiv.offsetWidth;
+            tokenDiv.classList.add('visible');
+
+            // 2. Add text to the User Facing Output (only if it's NOT a stop token)
+            if (currentToken.type === 'text') {
+                // Remove cursor, append text, re-add cursor
+                const currentHtml = aiOutputEl.innerHTML;
+                aiOutputEl.innerHTML = currentHtml.replace('<span class="cursor" id="cursor"></span>', '') + currentToken.text + '<span class="cursor" id="cursor"></span>';
+            } else if (currentToken.type === 'stop') {
+                // Stop token recognized!
+                clearInterval(interval);
+                statusTextEl.innerText = "Stop token <|stop|> predicted. Generation halted safely.";
+                statusTextEl.style.color = "#ff9999";
+                
+                // Remove cursor because generation is done
+                const finalHtml = aiOutputEl.innerHTML;
+                aiOutputEl.innerHTML = finalHtml.replace('<span class="cursor" id="cursor"></span>', '');
+
+                setTimeout(() => {
+                    isAnimating = false;
+                    generateBtn.innerText = "Replay Animation";
+                    generateBtn.disabled = false;
+                }, 1000);
+            }
+
+            currentIndex++;
+        }, 400); // Speed of token generation
+    });
+</script>
+
+</body>
+</html>
