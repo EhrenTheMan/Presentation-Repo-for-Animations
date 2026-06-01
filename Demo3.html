@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Generation: Temp + Stop Token</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #1e1e1e;
+            width: 900px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .header {
+            background-color: #2c2c2c;
+            padding: 15px 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            border-bottom: 1px solid #3c3c3c;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .radio-group {
+            display: flex;
+            gap: 10px;
+            font-size: 14px;
+        }
+        .radio-group label {
+            cursor: pointer;
+            padding: 4px 8px;
+            background-color: #333;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .radio-group label:hover {
+            background-color: #444;
+        }
+        .radio-group input:checked + span {
+            color: #00aaff;
+            font-weight: bold;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            color: #888;
+        }
+        .main-content {
+            display: flex;
+            height: 500px;
+        }
+        .left-panel {
+            flex: 6;
+            display: flex;
+            flex-direction: column;
+            border-right: 2px dashed #444;
+        }
+        .chat-ui {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+        .label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+        .bubble {
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 90%;
+            line-height: 1.4;
+            font-size: 14px;
+        }
+        .user-bubble {
+            background-color: #005c4b;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+        }
+        .ai-bubble {
+            background-color: #333333;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+        .engine-view {
+            padding: 15px;
+            background-color: #0a0a0a;
+            min-height: 120px;
+            border-top: 1px solid #333;
+        }
+        .token-stream {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+        }
+        .token {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            padding: 3px 6px;
+            border-radius: 4px;
+            animation: popIn 0.2s ease forwards;
+        }
+        .token.stop-token {
+            background-color: #660000;
+            border-color: #ff3333;
+            color: #ff9999;
+            font-weight: bold;
+        }
+        .right-panel {
+            flex: 4;
+            padding: 20px;
+            background-color: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+        }
+        .prob-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            height: 24px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+        }
+        .arrow {
+            width: 20px;
+            color: #4CAF50;
+            font-weight: bold;
+            visibility: hidden;
+        }
+        .word {
+            width: 80px;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bar-container {
+            flex-grow: 1;
+            background-color: #333;
+            height: 100%;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            margin: 0 10px;
+        }
+        .bar {
+            background-color: #007acc;
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease, background-color 0.2s;
+        }
+        .percent {
+            width: 40px;
+            text-align: right;
+            color: #aaa;
+        }
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background-color: #fff;
+            vertical-align: middle;
+            margin-left: 2px;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div>Live Generation Engine</div>
+        <div class="controls">
+            <div class="radio-group">
+                <label><input type="radio" name="temp" value="low" checked> <span>Low Temp (0.1)</span></label>
+                <label><input type="radio" name="temp" value="med"> <span>Med Temp (1.0)</span></label>
+                <label><input type="radio" name="temp" value="high"> <span>High Temp (2.0)</span></label>
+            </div>
+            <button id="generateBtn">Start Generation</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="left-panel">
+            <div class="chat-ui">
+                <div>
+                    <div class="label" style="text-align: right;">User</div>
+                    <div class="bubble user-bubble">
+                        I’m looking for a new Full-Size SUV with loads of room for family, with driver focused comfort features.
+                    </div>
+                </div>
+                <div>
+                    <div class="label">AI Assistant</div>
+                    <div class="bubble ai-bubble" id="aiOutput">Sure, there are several Stellantis vehicles that could fit those needs. One<span class="cursor" id="cursor"></span></div>
+                </div>
+            </div>
+            <div class="engine-view">
+                <div class="label">Token Stream (Engine Output)</div>
+                <div class="token-stream" id="tokenStream"></div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="label" style="margin-bottom: 20px;">Next Token Probabilities</div>
+            <div id="probList">
+                </div>
+            <div class="label" id="statusText" style="margin-top: auto; color: #888; font-style: italic;">Ready...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // The predefined paths to clearly demonstrate temperature effects
+    const sequences = {
+        low: [
+            { text: " option", alts: [" popular", " vehicle", " choice", " good"], targetProb: 97, altProbs: [1, 1, 0.5, 0.5] },
+            { text: " for", alts: [" to", " is", " that", " with"], targetProb: 95, altProbs: [2, 1, 1, 1] },
+            { text: " a", alts: [" the", " your", " this", " an"], targetProb: 98, altProbs: [1, 0.5, 0.3, 0.2] },
+            { text: " full-size", alts: [" large", " big", " family", " great"], targetProb: 92, altProbs: [3, 2, 2, 1] },
+            { text: " SUV", alts: [" vehicle", " car", " truck", " option"], targetProb: 99, altProbs: [0.5, 0.2, 0.2, 0.1] },
+            { text: " is", alts: [" would", " could", " might", " includes"], targetProb: 96, altProbs: [2, 1, 0.5, 0.5] },
+            { text: " the", alts: [" a", " this", " one", " our"], targetProb: 98, altProbs: [1, 0.5, 0.3, 0.2] },
+            { text: " Jeep", alts: [" Dodge", " Chrysler", " Ram", " Fiat"], targetProb: 85, altProbs: [10, 3, 1, 1] },
+            { text: " Wagoneer.", alts: [" Cherokee.", " Durango.", " Pacifica.", " model."], targetProb: 95, altProbs: [2, 1, 1, 1] },
+            { text: "<|stop|>", type: "stop", alts: ["\n", " It", " The", " This"], targetProb: 99, altProbs: [0.5, 0.2, 0.2, 0.1] }
+        ],
+        med: [
+            { text: " solid", alts: [" option", " vehicle", " popular", " good"], targetProb: 25, altProbs: [45, 15, 10, 5] }, // Notice target isn't the highest prob!
+            { text: " vehicle", alts: [" choice", " SUV", " pick", " option"], targetProb: 35, altProbs: [40, 15, 6, 4] },
+            { text: " to", alts: [" is", " for", " that", " with"], targetProb: 60, altProbs: [20, 10, 5, 5] },
+            { text: " consider", alts: [" buy", " look", " check", " test"], targetProb: 40, altProbs: [30, 15, 10, 5] },
+            { text: " is", alts: [" would", " might", " could", " includes"], targetProb: 80, altProbs: [10, 5, 3, 2] },
+            { text: " the", alts: [" a", " this", " our", " one"], targetProb: 85, altProbs: [8, 4, 2, 1] },
+            { text: " Dodge", alts: [" Jeep", " Chrysler", " Ram", " Fiat"], targetProb: 30, altProbs: [55, 10, 3, 2] },
+            { text: " Durango.", alts: [" Wagoneer.", " Cherokee.", " Hornet.", " Journey."], targetProb: 65, altProbs: [15, 10, 5, 5] },
+            { text: "<|stop|>", type: "stop", alts: ["\n", " It", " This", " With"], targetProb: 90, altProbs: [5, 3, 1, 1] }
+        ],
+        high: [
+            { text: " spicy", alts: [" option", " vehicle", " potato", " purple"], targetProb: 15, altProbs: [25, 22, 20, 18] }, // Very flat distribution
+            { text: " meatball", alts: [" choice", " SUV", " car", " spaceship"], targetProb: 12, altProbs: [28, 25, 20, 15] },
+            { text: " that", alts: [" to", " is", " for", " runs"], targetProb: 18, altProbs: [24, 22, 19, 17] },
+            { text: " drives", alts: [" runs", " considers", " flies", " floats"], targetProb: 16, altProbs: [23, 22, 20, 19] },
+            { text: " sideways", alts: [" well", " fast", " backwards", " up"], targetProb: 14, altProbs: [25, 24, 19, 18] },
+            { text: " is", alts: [" the", " a", " might", " could"], targetProb: 20, altProbs: [25, 20, 18, 17] },
+            { text: " a", alts: [" the", " an", " some", " this"], targetProb: 22, altProbs: [24, 20, 18, 16] },
+            { text: " bicycle.", alts: [" Jeep.", " Durango.", " toaster.", " shoe."], targetProb: 11, altProbs: [26, 24, 20, 19] },
+            { text: "<|stop|>", type: "stop", alts: ["\n", " What", " You", " Oh"], targetProb: 80, altProbs: [8, 5, 4, 3] }
+        ]
+    };
+
+    const initialText = "Sure, there are several Stellantis vehicles that could fit those needs. One";
+    const aiOutputEl = document.getElementById('aiOutput');
+    const tokenStreamEl = document.getElementById('tokenStream');
+    const generateBtn = document.getElementById('generateBtn');
+    const probListEl = document.getElementById('probList');
+    const statusTextEl = document.getElementById('statusText');
+    const radios = document.getElementsByName('temp');
+
+    let isAnimating = false;
+
+    // Initialize the right panel with empty rows
+    function initProbPanel() {
+        probListEl.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+            probListEl.innerHTML += `
+                <div class="prob-row">
+                    <div class="arrow" id="arrow-${i}">></div>
+                    <div class="word" id="word-${i}">---</div>
+                    <div class="bar-container">
+                        <div class="bar" id="bar-${i}"></div>
+                    </div>
+                    <div class="percent" id="percent-${i}">0%</div>
+                </div>
+            `;
+        }
+    }
+
+    function resetUI() {
+        tokenStreamEl.innerHTML = '';
+        aiOutputEl.innerHTML = initialText + '<span class="cursor" id="cursor"></span>';
+        initProbPanel();
+    }
+
+    // Helper to shuffle the array so the target isn't always at the top visually
+    function shuffleAndGetIndexes(targetText, alts, targetProb, altProbs) {
+        let items = [
+            { text: targetText, prob: targetProb, isTarget: true },
+            ...alts.map((alt, i) => ({ text: alt, prob: altProbs[i], isTarget: false }))
+        ];
+        // Sort descending by probability to make the chart look like a real distribution
+        items.sort((a, b) => b.prob - a.prob);
+        return items;
+    }
+
+    function clearArrows() {
+        for (let i = 0; i < 5; i++) {
+            document.getElementById(`arrow-${i}`).style.visibility = 'hidden';
+            document.getElementById(`bar-${i}`).style.backgroundColor = '#007acc';
+            document.getElementById(`word-${i}`).style.color = '#fff';
+        }
+    }
+
+    generateBtn.addEventListener('click', () => {
+        if (isAnimating) return;
+        isAnimating = true;
+        generateBtn.disabled = true;
+        for(let r of radios) r.disabled = true;
+
+        resetUI();
+
+        let selectedTemp = "low";
+        for (let r of radios) { if (r.checked) selectedTemp = r.value; }
+
+        const currentPath = sequences[selectedTemp];
+        let tokenIndex = 0;
+
+        function processNextToken() {
+            if (tokenIndex >= currentPath.length) {
+                isAnimating = false;
+                generateBtn.disabled = false;
+                for(let r of radios) r.disabled = false;
+                statusTextEl.innerText = "Generation complete.";
+                return;
+            }
+
+            const stepData = currentPath[tokenIndex];
+            statusTextEl.innerText = "Calculating probabilities...";
+            
+            // 1. Setup probability visualization
+            const displayItems = shuffleAndGetIndexes(stepData.text, stepData.alts, stepData.targetProb, stepData.altProbs);
+            let targetUIIndex = 0;
+
+            for (let i = 0; i < 5; i++) {
+                document.getElementById(`word-${i}`).innerText = displayItems[i].text.replace('<|stop|>', 'STOP');
+                document.getElementById(`bar-${i}`).style.width = `${displayItems[i].prob}%`;
+                document.getElementById(`percent-${i}`).innerText = `${displayItems[i].prob.toFixed(0)}%`;
+                if (displayItems[i].isTarget) targetUIIndex = i;
+            }
+
+            clearArrows();
+
+            // 2. Animate the "Sampling" process (Jumping Arrow)
+            let jumps = 0;
+            const maxJumps = 6;
+            const jumpInterval = setInterval(() => {
+                clearArrows();
+                const randomIdx = Math.floor(Math.random() * 5);
+                document.getElementById(`arrow-${randomIdx}`).style.visibility = 'visible';
+                jumps++;
+
+                if (jumps >= maxJumps) {
+                    clearInterval(jumpInterval);
+                    
+                    // 3. Lock onto the chosen token
+                    clearArrows();
+                    document.getElementById(`arrow-${targetUIIndex}`).style.visibility = 'visible';
+                    document.getElementById(`bar-${targetUIIndex}`).style.backgroundColor = '#4CAF50';
+                    document.getElementById(`word-${targetUIIndex}`).style.color = '#4CAF50';
+                    statusTextEl.innerText = `Sampled: "${stepData.text.trim()}"`;
+
+                    // 4. Append to Chat and Stream after a tiny delay
+                    setTimeout(() => {
+                        const tokenDiv = document.createElement('div');
+                        tokenDiv.className = 'token';
+                        if (stepData.type === 'stop') {
+                            tokenDiv.classList.add('stop-token');
+                            statusTextEl.innerText = "Stop token reached. Halting.";
+                            // Remove cursor
+                            aiOutputEl.innerHTML = aiOutputEl.innerHTML.replace('<span class="cursor" id="cursor"></span>', '');
+                        } else {
+                            // Update chat text
+                            aiOutputEl.innerHTML = aiOutputEl.innerHTML.replace('<span class="cursor" id="cursor"></span>', '') + stepData.text + '<span class="cursor" id="cursor"></span>';
+                        }
+                        
+                        tokenDiv.innerText = stepData.text;
+                        tokenStreamEl.appendChild(tokenDiv);
+
+                        tokenIndex++;
+                        // 5. Loop to next token
+                        setTimeout(processNextToken, 400); // Wait before starting next token
+
+                    }, 300); // Time to look at the green highlighted selection
+                }
+            }, 60); // Speed of the jumping arrow
+        }
+
+        // Start the loop
+        processNextToken();
+    });
+
+    // Run init on load
+    initProbPanel();
+</script>
+
+</body>
+</html>
