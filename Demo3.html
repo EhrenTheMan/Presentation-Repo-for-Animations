@@ -14,7 +14,45 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+            position: relative; /* For the hint banner */
         }
+        
+        /* Hint Banner CSS */
+        .hint-banner {
+            position: absolute;
+            top: 20px;
+            background-color: #007acc;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: slideIn 0.5s ease forwards 0.5s, fadeOut 0.5s ease forwards 8s;
+        }
+        .close-hint {
+            cursor: pointer;
+            font-size: 16px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .close-hint:hover {
+            opacity: 1;
+        }
+        @keyframes slideIn {
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeOut {
+            100% { opacity: 0; visibility: hidden; }
+        }
+
+        /* Container & Main Layout */
         .container {
             background-color: #1e1e1e;
             width: 900px;
@@ -22,7 +60,7 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             display: flex;
             flex-direction: column;
-            overflow: visible; /* Changed from hidden to allow tooltips to show */
+            overflow: visible; 
         }
         .header {
             background-color: #2c2c2c;
@@ -227,7 +265,7 @@
             z-index: 10;
             bottom: 150%;
             left: 50%;
-            margin-left: -112px; /* Center the tooltip */
+            margin-left: -112px;
             opacity: 0;
             transition: opacity 0.3s;
             font-size: 12px;
@@ -237,9 +275,8 @@
             letter-spacing: normal;
             border: 1px solid #555;
             box-shadow: 0 5px 15px rgba(0,0,0,0.6);
-            pointer-events: none; /* Prevents the tooltip from blocking clicks */
+            pointer-events: none;
         }
-        /* Tooltip Arrow */
         .tooltip .tooltip-text::after {
             content: "";
             position: absolute;
@@ -263,6 +300,11 @@
     </style>
 </head>
 <body>
+
+<div class="hint-banner" id="hintBanner">
+    💡 Hint: Hover or Tap on dotted underlined words for definitions! 
+    <span class="close-hint" onclick="document.getElementById('hintBanner').style.display='none'">✕</span>
+</div>
 
 <div class="container">
     <div class="header">
@@ -293,7 +335,6 @@
     </div>
 
     <div class="main-content">
-        <!-- Left Panel: Chat and Token Stream -->
         <div class="left-panel">
             <div class="chat-ui">
                 <div>
@@ -317,7 +358,6 @@
             </div>
         </div>
 
-        <!-- Right Panel: Probability Visualizer -->
         <div class="right-panel">
             <div class="label" style="margin-bottom: 20px;">
                 Next Token <span class="tooltip">Probabilities
@@ -325,8 +365,7 @@
                 </span>
             </div>
             <div id="probList">
-                <!-- 5 rows will be injected here via JS -->
-            </div>
+                </div>
             <div class="label" id="statusText" style="margin-top: auto; color: #888; font-style: italic; overflow: visible;">Ready...</div>
         </div>
     </div>
@@ -424,6 +463,9 @@
         isAnimating = true;
         generateBtn.disabled = true;
         for(let r of radios) r.disabled = true;
+
+        // Hide hint banner if it's still showing when they click generate
+        document.getElementById('hintBanner').style.display = 'none';
 
         resetUI();
 
