@@ -251,7 +251,7 @@
         .tooltip {
             position: relative;
             display: inline-block;
-            cursor: help;
+            cursor: pointer;
             border-bottom: 1px dotted #aaa;
         }
         .tooltip .tooltip-text {
@@ -291,6 +291,93 @@
         .tooltip:hover .tooltip-text {
             visibility: visible;
             opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Glossary Sidebar */
+        .glossary-overlay {
+            position: fixed;
+            top: 0; right: 0; bottom: 0;
+            width: 340px;
+            background-color: #1a1a2e;
+            border-left: 2px solid #007acc;
+            box-shadow: -5px 0 25px rgba(0,0,0,0.7);
+            z-index: 200;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        .glossary-overlay.open {
+            transform: translateX(0);
+        }
+        .glossary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background-color: #007acc;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .glossary-close {
+            cursor: pointer;
+            font-size: 20px;
+            background: none;
+            border: none;
+            color: white;
+            padding: 0 4px;
+        }
+        .glossary-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .glossary-term {
+            color: #00aaff;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+        .glossary-short {
+            color: #ccc;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        .glossary-detail {
+            color: #aaa;
+            font-size: 13px;
+            line-height: 1.7;
+            border-top: 1px solid #333;
+            padding-top: 14px;
+        }
+        .glossary-detail strong {
+            color: #ddd;
+        }
+
+        /* Back Button */
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            background-color: #333;
+            color: #ccc;
+            border: 1px solid #555;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            transition: background-color 0.2s;
+            z-index: 50;
+        }
+        .back-btn:hover {
+            background-color: #444;
+            color: #fff;
         }
 
         @keyframes popIn {
@@ -302,9 +389,23 @@
 </head>
 <body>
 
+<a href="index.html" class="back-btn">← Back</a>
+
 <div class="hint-banner" id="hintBanner">
-    💡 Hint: Hover or Tap on dotted underlined words for definitions! 
+    💡 Hint: Hover for definitions, or click dotted underlined words for the glossary! 
     <span class="close-hint" onclick="document.getElementById('hintBanner').style.display='none'">✕</span>
+</div>
+
+<div class="glossary-overlay" id="glossaryPanel">
+    <div class="glossary-header">
+        <span>📖 Glossary</span>
+        <button class="glossary-close" onclick="closeGlossary()">✕</button>
+    </div>
+    <div class="glossary-body">
+        <div class="glossary-term" id="glossaryTerm">Select a term</div>
+        <div class="glossary-short" id="glossaryShort">Click on any dotted-underlined word in the demo to see its full definition here.</div>
+        <div class="glossary-detail" id="glossaryDetail"></div>
+    </div>
 </div>
 
 <div class="container">
@@ -314,20 +415,20 @@
             <div class="radio-group">
                 <label>
                     <input type="radio" name="temp" value="low" checked> 
-                    <span class="tooltip">Low Temp (0.1)
-                        <span class="tooltip-text">Makes the AI highly predictable. It takes almost no risks and almost always picks the highest probability option.</span>
+                    <span class="tooltip" data-glossary="temperature">Low Temp (0.1)
+                        <span class="tooltip-text">Temperature is a number (0–2) that controls randomness. At 0.1, the model is nearly deterministic — it almost always picks the highest-probability word.</span>
                     </span>
                 </label>
                 <label>
                     <input type="radio" name="temp" value="med"> 
-                    <span class="tooltip">Med Temp (1.0)
-                        <span class="tooltip-text">The default balance. The AI frequently picks the top option but occasionally rolls the dice on lower options for creativity.</span>
+                    <span class="tooltip" data-glossary="temperature">Med Temp (1.0)
+                        <span class="tooltip-text">At the default temperature of 1.0, the probability distribution is unchanged — the model picks likely words most of the time but occasionally samples creative alternatives.</span>
                     </span>
                 </label>
                 <label>
                     <input type="radio" name="temp" value="high"> 
-                    <span class="tooltip">High Temp (2.0)
-                        <span class="tooltip-text">Flattens the probabilities completely. Lower-ranked, unlikely words become highly common, creating chaotic or creative text.</span>
+                    <span class="tooltip" data-glossary="temperature">High Temp (2.0)
+                        <span class="tooltip-text">At 2.0, temperature flattens the probability curve — unlikely words become almost as probable as likely ones, producing chaotic or highly creative output.</span>
                     </span>
                 </label>
             </div>
@@ -351,7 +452,7 @@
             </div>
             <div class="engine-view">
                 <div class="label">
-                    <span class="tooltip">Token Stream
+                    <span class="tooltip" data-glossary="token">Token Stream
                         <span class="tooltip-text">A "token" is a piece of a word. LLMs don't think in sentences; they predict text one token at a time.</span>
                     </span> (Engine Output)
                 </div>
@@ -361,7 +462,7 @@
 
         <div class="right-panel">
             <div class="label" style="margin-bottom: 20px;">
-                Next Token <span class="tooltip">Probabilities
+                Next Token <span class="tooltip" data-glossary="probabilities">Probabilities
                     <span class="tooltip-text">Before generating the next token, the AI calculates the mathematical likelihood of every single known word based on its training.</span>
                 </span>
             </div>
@@ -465,8 +566,8 @@
         generateBtn.disabled = true;
         for(let r of radios) r.disabled = true;
 
-        // Hide hint banner if it's still showing when they click generate
-        document.getElementById('hintBanner').style.display = 'none';
+        const hintBanner = document.getElementById('hintBanner');
+        if (hintBanner) hintBanner.style.display = 'none';
 
         resetUI();
 
@@ -521,7 +622,7 @@
                         tokenDiv.className = 'token';
                         if (stepData.type === 'stop') {
                             tokenDiv.classList.add('stop-token');
-                            statusTextEl.innerHTML = "<span class='tooltip' style='border-bottom:1px dotted #ff9999; color:#ff9999;'>Stop token<span class='tooltip-text' style='color:#fff;'>A special command injected by the engine that tells the AI it has finished its thought and must halt generation.</span></span> reached. Halting.";
+                            statusTextEl.innerHTML = "<span class='tooltip' data-glossary='stoptoken' style='border-bottom:1px dotted #ff9999; color:#ff9999;'>Stop token<span class='tooltip-text' style='color:#fff;'>A special command injected by the engine that tells the AI it has finished its thought and must halt generation.</span></span> reached. Halting.";
                             aiOutputEl.innerHTML = aiOutputEl.innerHTML.replace('<span class="cursor" id="cursor"></span>', '');
                         } else {
                             aiOutputEl.innerHTML = aiOutputEl.innerHTML.replace('<span class="cursor" id="cursor"></span>', '') + stepData.text + '<span class="cursor" id="cursor"></span>';
@@ -542,6 +643,69 @@
     });
 
     initProbPanel();
+
+    // --- Glossary System ---
+    const glossaryEntries = {
+        temperature: {
+            term: 'Temperature',
+            short: 'Temperature is a single number (typically 0 to 2) that you pass to the model as a setting. It mathematically reshapes the probability distribution over the next token before one is sampled.',
+            detail: '<strong>How it works:</strong> The model first computes raw scores ("logits") for every possible next word. Temperature divides those scores before converting them into probabilities via softmax.<br><br><strong>Low temp (e.g. 0.1):</strong> Dividing by a small number makes high scores much higher and low scores nearly zero — the model almost always picks the top word.<br><br><strong>High temp (e.g. 2.0):</strong> Dividing by a large number compresses the differences — even unlikely words get a real chance of being picked.<br><br><strong>In short:</strong> Temperature does not change <em>what</em> the model knows; it changes <em>how boldly</em> it picks from what it knows.'
+        },
+        token: {
+            term: 'Token',
+            short: 'A token is the smallest unit of text that an LLM reads and generates. Tokens can be whole words, parts of words, or punctuation.',
+            detail: '<strong>Examples:</strong> "hello" = 1 token, "unbelievable" might be split into "un" + "believ" + "able" = 3 tokens.<br><br>The model\'s entire vocabulary is a fixed list of tokens (typically 30k–100k entries). Generation works by predicting one token at a time, appending it, and repeating.'
+        },
+        probabilities: {
+            term: 'Probabilities',
+            short: 'Before producing the next token, the model assigns a probability (0%–100%) to every token in its vocabulary, representing how likely each one is to come next.',
+            detail: '<strong>Where they come from:</strong> The model\'s neural network outputs a raw score ("logit") for each vocabulary entry. A softmax function converts these scores into a proper probability distribution that sums to 100%.<br><br>Temperature is applied <em>before</em> softmax, which is how it reshapes these probabilities.'
+        },
+        stoptoken: {
+            term: 'Stop Token',
+            short: 'A stop token (e.g. <|stop|> or <|endoftext|>) is a special entry in the model\'s vocabulary that signals "I am done generating." The model learns during training when to predict it.',
+            detail: '<strong>Why it exists:</strong> Without a stop token, the model would generate text forever — it has no built-in sense of "enough." The stop token is trained into the model so it learns to predict it at natural endpoints (end of a sentence, end of an answer).<br><br><strong>How it works:</strong> At each step, the stop token competes with every other token in the probability distribution. When the model predicts it as the most likely next token, generation halts and the stop token is never shown to the user.'
+        }
+    };
+
+    function openGlossary(key) {
+        const entry = glossaryEntries[key];
+        if (!entry) return;
+        document.getElementById('glossaryTerm').textContent = entry.term;
+        document.getElementById('glossaryShort').textContent = entry.short;
+        document.getElementById('glossaryDetail').innerHTML = entry.detail;
+        document.getElementById('glossaryPanel').classList.add('open');
+    }
+
+    function closeGlossary() {
+        document.getElementById('glossaryPanel').classList.remove('open');
+    }
+
+    // Global Click Listener for Tooltips and click-off logic
+    document.addEventListener('click', function(e) {
+        const tooltipText = e.target.closest('.tooltip-text');
+        const glossaryPanel = document.getElementById('glossaryPanel');
+
+        if (tooltipText) {
+            const tooltip = tooltipText.closest('.tooltip[data-glossary]');
+            if (tooltip) {
+                e.preventDefault();
+                e.stopPropagation();
+                openGlossary(tooltip.getAttribute('data-glossary'));
+                
+                const hintBanner = document.getElementById('hintBanner');
+                if (hintBanner) hintBanner.style.display = 'none';
+                return;
+            }
+        }
+
+        // Close glossary if clicking outside of it
+        if (glossaryPanel && glossaryPanel.classList.contains('open')) {
+            if (!e.target.closest('#glossaryPanel')) {
+                closeGlossary();
+            }
+        }
+    });
 </script>
 
 </body>
