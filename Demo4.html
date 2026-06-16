@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo 4: Learn Each LLM Step</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: #111;
+      color: #e6e6e6;
+      min-height: 100vh;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .back-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      text-decoration: none;
+      color: #ddd;
+      background: #2c2c2c;
+      border: 1px solid #555;
+      border-radius: 6px;
+      padding: 8px 14px;
+      z-index: 120;
+    }
+    .shell {
+      max-width: 1150px;
+      margin: 30px auto 0;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 14px 40px rgba(0,0,0,0.55);
+    }
+    .head {
+      padding: 16px;
+      border-bottom: 1px solid #333;
+      background: #252525;
+    }
+    .head h1 {
+      margin: 0;
+      font-size: 20px;
+      color: #fff;
+    }
+    .head p {
+      margin: 8px 0 0;
+      color: #b6b6b6;
+      font-size: 14px;
+    }
+    .tabs {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tab {
+      border: 1px solid #4c4c4c;
+      background: #2e2e2e;
+      color: #ddd;
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .tab.active {
+      border-color: #007acc;
+      background: #003a54;
+      color: #dff3ff;
+      font-weight: bold;
+    }
+    .body { padding: 16px; }
+    .stage { display: none; }
+    .stage.active { display: grid; gap: 12px; }
+    .two-col { grid-template-columns: 1fr 1fr; }
+    .card {
+      background: #141414;
+      border: 1px solid #313131;
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      color: #fff;
+    }
+    .muted { color: #acacac; font-size: 13px; line-height: 1.5; }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    label { font-size: 12px; color: #c0c0c0; }
+    select, input[type="range"], button {
+      background: #2d2d2d;
+      color: #fff;
+      border: 1px solid #4b4b4b;
+      border-radius: 6px;
+      font-family: inherit;
+    }
+    select, button { padding: 7px 10px; font-size: 12px; }
+    button.primary {
+      background: #007acc;
+      border-color: #0a8de4;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button.primary:hover { background: #0098ff; }
+    .token-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 50px;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    .token {
+      background: #2d2d2d;
+      border: 1px solid #4e4e4e;
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      color: #ddd;
+    }
+    .token.generated { background: #12361c; border-color: #2f9150; color: #c6f6d2; }
+    .token.stop { background: #3a1212; border-color: #d55c5c; color: #ffc9c9; font-weight: bold; }
+    .bubble {
+      border-radius: 8px;
+      padding: 10px 12px;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+    .user { background: #005c4b; }
+    .ai { background: #2f2f2f; margin-top: 8px; min-height: 40px; }
+    .bars { display: flex; flex-direction: column; gap: 8px; }
+    .row {
+      display: grid;
+      grid-template-columns: 110px 1fr 52px;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+    }
+    .w {
+      font-family: 'Courier New', Courier, monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .track {
+      height: 15px;
+      border: 1px solid #474747;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #282828;
+    }
+    .fill { height: 100%; background: #007acc; transition: width 0.25s ease; }
+    .fill.after { background: #00a66a; }
+    .fill.selected { background: #45c66f; }
+    .status {
+      margin-top: 8px;
+      min-height: 20px;
+      color: #8fd2ff;
+      font-size: 13px;
+    }
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      border-bottom: 1px dotted #aaa;
+      cursor: help;
+    }
+    .tooltip .tooltip-text {
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.25s ease 1s, visibility 0s linear 1.75s;
+      position: absolute;
+      bottom: 150%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 220px;
+      background: #2b2b2b;
+      border: 1px solid #595959;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+      padding: 8px 10px;
+      pointer-events: auto;
+      z-index: 1000;
+    }
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+      transition: opacity 0.12s ease, visibility 0s;
+    }
+    .glossary-btn {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 6px;
+      background: #007acc;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 200;
+    }
+    .glossary-btn:hover { background: #0098ff; }
+    .glossary {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(420px, 95vw);
+      background: #161d31;
+      border-left: 2px solid #007acc;
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+    }
+    .glossary.open { transform: translateX(0); }
+    .g-head {
+      background: #007acc;
+      color: #fff;
+      font-weight: bold;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .g-head button {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .g-body { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .g-item { background: #1d2740; border: 1px solid #304168; border-radius: 8px; }
+    .g-term {
+      color: #6fd1ff;
+      font-weight: bold;
+      padding: 10px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .g-term::after {
+      content: '▾';
+      color: #9eb1df;
+      font-size: 12px;
+      transition: transform 0.2s ease;
+    }
+    .g-item.expanded .g-term::after { transform: rotate(180deg); }
+    .g-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.25s ease;
+      padding: 0 10px;
+    }
+    .g-item.expanded .g-content {
+      max-height: 420px;
+      padding: 0 10px 10px;
+    }
+    .g-short { color: #ddd; font-size: 13px; margin-bottom: 6px; line-height: 1.45; }
+    .g-detail { color: #9eb1df; font-size: 12px; line-height: 1.55; }
+    @media (max-width: 900px) { .stage.active.two-col { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<a href="index.html" class="back-btn">← Back</a>
+<button class="glossary-btn" onclick="openGlossary()">📖 Glossary</button>
+
+<div class="glossary" id="glossaryPanel">
+  <div class="g-head"><span>Glossary</span><button onclick="closeGlossary()">✕</button></div>
+  <div class="g-body" id="glossaryBody"></div>
+</div>
+
+<div class="shell">
+  <div class="head">
+    <h1>Demo 4: How does this all work together?</h1>
+    <p>Each concept has its own mini-demo. The final tab combines all mechanics in one full generation loop.</p>
+    <div class="tabs" id="tabs"></div>
+  </div>
+  <div class="body">
+    <section class="stage two-col active" id="stage-0">
+      <div class="card">
+        <h3>Part 1: What is a <span class="tooltip" data-glossary="token">token<span class="tooltip-text">Click this mini-definition bubble for glossary details.</span></span>?</h3>
+        <div class="controls">
+          <label for="tokenPrompt">Prompt</label>
+          <select id="tokenPrompt"></select>
+          <button class="primary" id="tokenizeBtn">Tokenize</button>
+        </div>
+        <div class="muted">Prompt text</div>
+        <div class="bubble user" id="tokenPromptText"></div>
+        <div class="status" id="tokenStatus">Click Tokenize to split text into model tokens.</div>
+      </div>
+      <div class="card">
+        <h3>Tokenized Pieces (<span class="tooltip" data-glossary="token">tokenization<span class="tooltip-text">Tokenization breaks text into model-readable units.</span></span>)</h3>
+        <div class="token-wrap" id="tokenPieces"></div>
+      </div>
+    </section>
+
+    <section class="stage two-col" id="stage-1">
+      <div class="card">
+        <h3>Part 2: Next-token sampling (with context)</h3>
+        <div class="muted">The model looks at everything generated so far, scores possible next <span class="tooltip" data-glossary="token">tokens<span class="tooltip-text">A token is a piece of text the model predicts.</span></span>, and picks one based on <span class="tooltip" data-glossary="probabilities">probabilities<span class="tooltip-text">Normalized likelihood for each candidate token.</span></span>.</div>
+        <div class="muted" style="margin-top:8px;">User prompt</div>
+        <div class="bubble user" id="samplePrompt">I need a full-size SUV with lots of family room and comfort features.</div>
+        <div class="muted" style="margin-top:8px;">AI output so far</div>
+        <div class="bubble ai" id="sampleResult">A great choice would be the Jeep</div>
+        <div class="controls" style="margin-top:10px;"><button class="primary" id="sampleOnceBtn">Sample Next Token</button><button id="sampleResetBtn">Reset</button></div>
+      </div>
+      <div class="card">
+        <h3>Candidate next tokens</h3>
+        <div class="muted">Given the context above, these are plausible next tokens:</div>
+        <div class="bars" id="sampleBars" style="margin-top:10px;"></div>
+        <div class="status" id="sampleStatus"></div>
+      </div>
+    </section>
+
+    <section class="stage two-col" id="stage-2">
+      <div class="card">
+        <h3>Part 3: <span class="tooltip" data-glossary="temperature">Temperature<span class="tooltip-text">Higher temp increases randomness; lower temp sharpens top choices.</span></span> effect</h3>
+        <div class="controls">
+          <label for="tempSlider">Temperature</label>
+          <input type="range" id="tempSlider" min="0.2" max="2" step="0.1" value="1.0">
+          <span id="tempValue">1.0</span>
+        </div>
+        <div class="muted">Before temperature</div>
+        <div class="bars" id="tempBeforeBars"></div>
+      </div>
+      <div class="card">
+        <h3>After temperature</h3>
+        <div class="bars" id="tempAfterBars"></div>
+        <div class="status" id="tempStatus"></div>
+      </div>
+    </section>
+
+    <section class="stage two-col" id="stage-3">
+      <div class="card">
+        <h3>Part 4: <span class="tooltip" data-glossary="stoptoken">Stop token<span class="tooltip-text">A special token that tells generation to halt.</span></span></h3>
+        <div class="controls">
+          <button class="primary" id="stopPlayBtn">Play Stop-Token Demo</button>
+          <button id="stopResetBtn">Reset</button>
+        </div>
+        <div class="muted">Engine stream</div>
+        <div class="token-wrap" id="stopStream"></div>
+        <div class="status" id="stopStatus">Press Play to show generation halting on stop token.</div>
+      </div>
+      <div class="card">
+        <h3>User-facing output</h3>
+        <div class="muted">User prompt</div>
+        <div class="bubble user">I need a full-size SUV with lots of family room.</div>
+        <div class="muted" style="margin-top:8px;">AI response</div>
+        <div class="bubble ai" id="stopOutput">The Jeep Wagoneer is</div>
+        <div class="muted" style="margin-top:10px;">Notice: the stop token shows up in the engine stream on the left, but the user only sees the clean sentence on the right.</div>
+      </div>
+    </section>
+
+    <section class="stage two-col" id="stage-4">
+      <div class="card">
+        <h3>Part 5: Combined demo (all mechanics)</h3>
+        <div class="controls">
+          <label for="comboPrompt">Prompt</label>
+          <select id="comboPrompt"></select>
+          <label for="comboTemp">Temp</label>
+          <input type="range" id="comboTemp" min="0.2" max="2" step="0.1" value="1.0">
+          <span id="comboTempValue">1.0</span>
+          <label for="comboSpeed">Speed</label>
+          <select id="comboSpeed">
+            <option value="0.5">0.5x</option>
+            <option value="1" selected>1.0x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2.0x</option>
+          </select>
+          <button class="primary" id="comboPlayBtn">Play</button>
+          <button id="comboStepBtn">Step</button>
+        </div>
+        <div class="bubble user" id="comboUserPrompt"></div>
+        <div class="bubble ai" id="comboOutput"></div>
+        <div class="status" id="comboPhaseStatus">Ready.</div>
+      </div>
+      <div class="card">
+        <h3>Combined engine view</h3>
+        <div class="muted">Context tokens</div>
+        <div class="token-wrap" id="comboContext"></div>
+        <div class="muted" style="margin-top:10px;">Top probabilities (after temp)</div>
+        <div class="bars" id="comboBars"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+const stageTitles = ['1. Tokens', '2. Sampling', '3. Temperature', '4. Stop Token', '5. Combined'];
+const prompts = {
+  suv: 'I need a full-size SUV with lots of family room and comfort features.',
+  city: 'Recommend a compact city commuter with strong efficiency.',
+  truck: 'What off-road capable truck should I consider?'
+};
+const glossaryEntries = {
+  temperature: {
+    term: 'Temperature',
+    short: 'Temperature is a single number (typically 0 to 2) that you pass to the model as a setting. It mathematically reshapes the probability distribution over the next token before one is sampled.',
+    detail: '<strong>How it works:</strong> The model first computes raw scores ("logits") for every possible next word. Temperature divides those scores before converting them into probabilities via softmax.<br><br><strong>Low temp (e.g. 0.1):</strong> Dividing by a small number makes high scores much higher and low scores nearly zero - the model almost always picks the top word.<br><br><strong>High temp (e.g. 2.0):</strong> Dividing by a large number compresses the differences - even unlikely words get a real chance of being picked.<br><br><strong>In short:</strong> Temperature does not change <em>what</em> the model knows; it changes <em>how boldly</em> it picks from what it knows.'
+  },
+  token: {
+    term: 'Token',
+    short: 'A token is the smallest unit of text that an LLM reads and generates. Tokens can be whole words, parts of words, or punctuation.',
+    detail: '<strong>Examples:</strong> "hello" = 1 token, "unbelievable" might be split into "un" + "believ" + "able" = 3 tokens.<br><br>The model\'s entire vocabulary is a fixed list of tokens (typically 30k-100k entries). Generation works by predicting one token at a time, appending it, and repeating.'
+  },
+  probabilities: {
+    term: 'Probabilities',
+    short: 'Before producing the next token, the model assigns a probability (0%-100%) to every token in its vocabulary, representing how likely each one is to come next.',
+    detail: '<strong>Where they come from:</strong> The model\'s neural network outputs a raw score ("logit") for each vocabulary entry. A softmax function converts these scores into a proper probability distribution that sums to 100%.<br><br>Temperature is applied <em>before</em> softmax, which is how it reshapes these probabilities.'
+  },
+  stoptoken: {
+    term: 'Stop Token',
+    short: 'A stop token (e.g. <|stop|> or <|endoftext|>) is a special entry in the model\'s vocabulary that signals "I am done generating." The model learns during training when to predict it.',
+    detail: '<strong>Why it exists:</strong> Without a stop token, the model would generate text forever - it has no built-in sense of "enough." The stop token is trained into the model so it learns to predict it at natural endpoints (end of a sentence, end of an answer).<br><br><strong>How it works:</strong> At each step, the stop token competes with every other token in the probability distribution. When the model predicts it as the most likely next token, generation halts and the stop token is never shown to the user.'
+  }
+};
+
+// Sampling demo: candidates that follow "...the Jeep" sensibly
+const sampleStarter = 'A great choice would be the Jeep';
+const sampleTimeline = [
+  { candidates: [' Wagoneer', ' Grand', ' Cherokee', ' Compass', ' Gladiator'], probs: [0.42, 0.24, 0.16, 0.11, 0.07] },
+  { candidates: [',', ' SUV', ' which', ' —', ' model'],                     probs: [0.40, 0.22, 0.18, 0.12, 0.08] },
+  { candidates: [' offering', ' featuring', ' providing', ' giving', ' boasting'], probs: [0.38, 0.26, 0.18, 0.10, 0.08] },
+  { candidates: [' three-row', ' spacious', ' premium', ' comfortable', ' luxurious'], probs: [0.36, 0.27, 0.18, 0.11, 0.08] },
+  { candidates: [' seating', ' cabins', ' interiors', ' rooms', ' layouts'], probs: [0.55, 0.20, 0.13, 0.07, 0.05] }
+];
+
+const nav = document.getElementById('tabs');
+const stages = Array.from(document.querySelectorAll('.stage'));
+let activeStage = 0;
+
+function renderStageNav() {
+  nav.innerHTML = '';
+  stageTitles.forEach((title, i) => {
+    const b = document.createElement('button');
+    b.className = 'tab' + (i === activeStage ? ' active' : '');
+    b.textContent = title;
+    b.onclick = () => setStage(i);
+    nav.appendChild(b);
+  });
+}
+function setStage(i) {
+  activeStage = i;
+  stages.forEach((s, idx) => s.classList.toggle('active', idx === i));
+  renderStageNav();
+}
+
+function pseudoTokenize(text) {
+  const parts = text.match(/[A-Za-z0-9'-]+|[^\sA-Za-z0-9]/g) || [];
+  const out = [];
+  parts.forEach((p) => {
+    if (/^[A-Za-z]{9,}$/.test(p)) {
+      const cut = Math.floor(p.length * 0.6);
+      out.push(p.slice(0, cut));
+      out.push('##' + p.slice(cut));
+    } else {
+      out.push(p);
+    }
+  });
+  return out;
+}
+function softmaxTemp(probs, t) {
+  const adj = probs.map((p) => Math.pow(Math.max(0.000001, p), 1 / t));
+  const sum = adj.reduce((a, b) => a + b, 0);
+  return adj.map(v => v / sum);
+}
+function weightedSample(probs) {
+  const r = Math.random();
+  let s = 0;
+  for (let i = 0; i < probs.length; i++) {
+    s += probs[i];
+    if (r <= s) return i;
+  }
+  return probs.length - 1;
+}
+function renderBars(container, tokens, probs, mode = '', selectedIndex = -1) {
+  container.innerHTML = '';
+  tokens.forEach((tok, i) => {
+    const pct = (probs[i] * 100).toFixed(1);
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<div class="w">${tok}</div><div class="track"><div class="fill ${mode} ${i === selectedIndex ? 'selected' : ''}" style="width:${Math.max(2, pct)}%"></div></div><div style="text-align:right;color:#aaa;">${pct}%</div>`;
+    container.appendChild(row);
+  });
+}
+
+// Stage 1
+const tokenPrompt = document.getElementById('tokenPrompt');
+const tokenPromptText = document.getElementById('tokenPromptText');
+const tokenPieces = document.getElementById('tokenPieces');
+const tokenStatus = document.getElementById('tokenStatus');
+
+function initPromptSelectors() {
+  Object.entries(prompts).forEach(([k, v]) => {
+    const o1 = document.createElement('option'); o1.value = k; o1.textContent = v; tokenPrompt.appendChild(o1);
+    const o2 = document.createElement('option'); o2.value = k; o2.textContent = v; document.getElementById('comboPrompt').appendChild(o2);
+  });
+  tokenPrompt.value = 'suv';
+  document.getElementById('comboPrompt').value = 'suv';
+  tokenPromptText.textContent = prompts.suv;
+  document.getElementById('comboUserPrompt').textContent = prompts.suv;
+}
+
+tokenPrompt.addEventListener('change', () => {
+  tokenPromptText.textContent = prompts[tokenPrompt.value];
+  tokenPieces.innerHTML = '';
+  tokenStatus.textContent = 'Click Tokenize to split text into model tokens.';
+});
+
+document.getElementById('tokenizeBtn').addEventListener('click', () => {
+  const toks = pseudoTokenize(prompts[tokenPrompt.value]);
+  tokenPieces.innerHTML = '';
+  toks.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'token';
+    div.textContent = t;
+    tokenPieces.appendChild(div);
+  });
+  tokenStatus.textContent = `Tokenized into ${toks.length} pieces.`;
+});
+
+// Stage 2: sampling with running context
+const sampleBars = document.getElementById('sampleBars');
+const sampleResult = document.getElementById('sampleResult');
+const sampleStatus = document.getElementById('sampleStatus');
+let sampleStepIdx = 0;
+
+function renderSampleBars(highlightIdx = -1) {
+  if (sampleStepIdx >= sampleTimeline.length) {
+    sampleBars.innerHTML = '';
+    return;
+  }
+  const step = sampleTimeline[sampleStepIdx];
+  renderBars(sampleBars, step.candidates, step.probs, '', highlightIdx);
+}
+function resetSampleStage() {
+  sampleStepIdx = 0;
+  sampleResult.textContent = sampleStarter;
+  sampleStatus.textContent = 'Click Sample Next Token to pick the first token.';
+  renderSampleBars();
+}
+document.getElementById('sampleOnceBtn').addEventListener('click', () => {
+  if (sampleStepIdx >= sampleTimeline.length) {
+    sampleStatus.textContent = 'Sentence complete. Press Reset to try again.';
+    return;
+  }
+  const step = sampleTimeline[sampleStepIdx];
+  const idx = weightedSample(step.probs);
+  renderBars(sampleBars, step.candidates, step.probs, '', idx);
+  const chosen = step.candidates[idx];
+  sampleResult.textContent += chosen;
+  sampleStepIdx += 1;
+  if (sampleStepIdx >= sampleTimeline.length) {
+    sampleStatus.textContent = `Sampled "${chosen.trim()}". Sentence complete.`;
+  } else {
+    sampleStatus.textContent = `Sampled "${chosen.trim()}". The chosen token was appended to the AI output above. Click again for the next step.`;
+  }
+});
+document.getElementById('sampleResetBtn').addEventListener('click', resetSampleStage);
+resetSampleStage();
+
+// Stage 3: temperature uses the same first-step candidates so it stays grounded
+const tempCandidates = sampleTimeline[0].candidates;
+const tempBaseProbs = sampleTimeline[0].probs;
+const tempSlider = document.getElementById('tempSlider');
+const tempValue = document.getElementById('tempValue');
+const tempBeforeBars = document.getElementById('tempBeforeBars');
+const tempAfterBars = document.getElementById('tempAfterBars');
+const tempStatus = document.getElementById('tempStatus');
+function renderTempStage() {
+  const t = parseFloat(tempSlider.value);
+  tempValue.textContent = t.toFixed(1);
+  const after = softmaxTemp(tempBaseProbs, t);
+  renderBars(tempBeforeBars, tempCandidates, tempBaseProbs);
+  renderBars(tempAfterBars, tempCandidates, after, 'after');
+  tempStatus.textContent = t < 1
+    ? 'Lower temp sharpens top tokens and makes output more predictable.'
+    : (t > 1 ? 'Higher temp flattens probabilities and increases randomness.' : 'Temp=1 leaves baseline probabilities unchanged.');
+}
+tempSlider.addEventListener('input', renderTempStage);
+renderTempStage();
+
+// Stage 4: stop token demo with a real, coherent sentence
+const stopStarter = 'The Jeep Wagoneer is';
+const stopTokens = [' a', ' spacious', ' full-size', ' SUV', ' with', ' three-row', ' seating', '.', '<|stop|>'];
+const stopStream = document.getElementById('stopStream');
+const stopOutput = document.getElementById('stopOutput');
+const stopStatus = document.getElementById('stopStatus');
+const stopPlayBtn = document.getElementById('stopPlayBtn');
+let stopTimer = null;
+let stopIndex = 0;
+function resetStopStage() {
+  clearInterval(stopTimer);
+  stopTimer = null;
+  stopIndex = 0;
+  stopStream.innerHTML = '';
+  stopOutput.textContent = stopStarter;
+  stopStatus.textContent = 'Press Play to show generation halting on stop token.';
+  stopPlayBtn.textContent = 'Play Stop-Token Demo';
+}
+function runStopStage() {
+  if (stopTimer || stopIndex > 0) {
+    // Once started, the main button acts as reset for quick restarts.
+    clearInterval(stopTimer);
+    stopTimer = null;
+    resetStopStage();
+    return;
+  }
+  stopPlayBtn.textContent = 'Reset';
+  stopTimer = setInterval(() => {
+    if (stopIndex >= stopTokens.length) {
+      clearInterval(stopTimer);
+      stopTimer = null;
+      return;
+    }
+    const tok = stopTokens[stopIndex++];
+    const chip = document.createElement('div');
+    chip.className = 'token ' + (tok === '<|stop|>' ? 'stop' : 'generated');
+    chip.textContent = tok;
+    stopStream.appendChild(chip);
+    if (tok === '<|stop|>') {
+      stopStatus.textContent = 'Stop token predicted. Generation halted.';
+      clearInterval(stopTimer);
+      stopTimer = null;
+    } else {
+      stopOutput.textContent += tok;
+      stopStatus.textContent = 'Generating token-by-token...';
+    }
+  }, 350);
+}
+stopPlayBtn.addEventListener('click', runStopStage);
+document.getElementById('stopResetBtn').addEventListener('click', resetStopStage);
+
+// Stage 5 combined: each prompt has a coherent token timeline so the output reads like a real answer
+const combo = { running: false, generated: [], done: false, timer: null };
+const comboPlayBtn = document.getElementById('comboPlayBtn');
+const comboOutput = document.getElementById('comboOutput');
+const comboContext = document.getElementById('comboContext');
+const comboBars = document.getElementById('comboBars');
+const comboPhaseStatus = document.getElementById('comboPhaseStatus');
+const comboTempSlider = document.getElementById('comboTemp');
+const comboTempValue = document.getElementById('comboTempValue');
+
+const comboPlans = {
+  suv: {
+    starter: 'The Jeep Wagoneer is ',
+    timeline: [
+      [' a', ' truly', ' definitely', ' arguably', ' easily'],
+      [' spacious', ' premium', ' luxurious', ' family-sized', ' comfortable'],
+      [' full-size', ' three-row', ' family', ' modern', ' refined'],
+      [' SUV', ' option', ' vehicle', ' choice', ' model'],
+      [' with', ' offering', ' featuring', ' boasting', ' delivering'],
+      [' three-row', ' premium', ' heated', ' quilted', ' captain\'s'],
+      [' seating', ' interiors', ' cabins', ' comfort', ' layouts'],
+      [' and', ',', ' plus', ' alongside', ' with'],
+      [' driver-focused', ' upscale', ' refined', ' modern', ' luxurious'],
+      [' comfort', ' tech', ' features', ' details', ' cabins'],
+      [' features', ' touches', ' upgrades', ' amenities', ' options'],
+      ['.', '!', ',', ' for', ' overall'],
+      ['<|stop|>']
+    ]
+  },
+  city: {
+    starter: 'The Fiat 500e is',
+    timeline: [
+      [' a', ' truly', ' easily', ' definitely', ' surprisingly'],
+      [' fully', ' purely', ' completely', ' nicely', ' very'],
+      [' electric', ' efficient', ' compact', ' agile', ' green'],
+      [' city', ' urban', ' commuter', ' compact', ' daily'],
+      [' car', ' EV', ' commuter', ' option', ' vehicle'],
+      [' built', ' designed', ' tuned', ' made', ' suited'],
+      [' for', ' around', ' to handle', ' to tackle', ' for tackling'],
+      [' tight', ' busy', ' narrow', ' crowded', ' urban'],
+      [' streets', ' roads', ' parking', ' commutes', ' traffic'],
+      [' and', ',', ' plus', ' while', ' yet'],
+      [' great', ' impressive', ' strong', ' excellent', ' solid'],
+      [' fuel', ' energy', ' battery', ' driving', ' overall'],
+      [' efficiency', ' economy', ' range', ' performance', ' costs'],
+      ['.', '!', ',', ' overall', ' too'],
+      ['<|stop|>']
+    ]
+  },
+  truck: {
+    starter: 'The Ram 1500 TRX',
+    timeline: [
+      [' is', ' offers', ' delivers', ' brings', ' provides'],
+      [' a', ' real', ' serious', ' genuine', ' true'],
+      [' supercharged', ' powerful', ' beastly', ' high-output', ' V8'],
+      [' V8', ' engine', ' powertrain', ' motor', ' drivetrain'],
+      [' paired', ' combined', ' matched', ' joined', ' tuned'],
+      [' with', ' to', ' alongside', ' against', ' for'],
+      [' specialized', ' rugged', ' off-road', ' heavy-duty', ' upgraded'],
+      [' off-road', ' suspension', ' tires', ' axles', ' shocks'],
+      [' suspension', ' components', ' hardware', ' upgrades', ' tuning'],
+      [' for', ' to handle', ' to tackle', ' to manage', ' on'],
+      [' rough', ' rocky', ' steep', ' muddy', ' challenging'],
+      [' trails', ' terrain', ' paths', ' routes', ' tracks'],
+      ['.', '!', ',', ' confidently', ' easily'],
+      ['<|stop|>']
+    ]
+  }
+};
+
+function currentComboPlan() {
+  const key = document.getElementById('comboPrompt').value;
+  return comboPlans[key] || comboPlans.suv;
+}
+
+function getComboBaseProbs(step, count) {
+  // Build a descending distribution sized to the candidate list for this step.
+  if (count <= 1) return [1];
+  const preset = [0.42, 0.24, 0.16, 0.11, 0.07];
+  const shift = Math.min(0.10, step * 0.012);
+  const seeded = Array.from({ length: count }, (_, i) => preset[i] ?? Math.max(0.03, preset[preset.length - 1] - 0.01 * (i - (preset.length - 1))));
+  const arr = seeded.map((v, i) => Math.max(0.02, v - shift * i + (i === 0 ? shift * 0.4 : 0)));
+  const s = arr.reduce((a, b) => a + b, 0);
+  return arr.map(v => v / s);
+}
+function renderComboContext() {
+  comboContext.innerHTML = '';
+  combo.generated.slice(-50).forEach(t => {
+    const d = document.createElement('div');
+    d.className = 'token ' + (t === '<|stop|>' ? 'stop' : 'generated');
+    d.textContent = t;
+    comboContext.appendChild(d);
+  });
+}
+function resetCombo() {
+  clearTimeout(combo.timer);
+  combo.running = false;
+  combo.generated = [];
+  combo.done = false;
+  comboPlayBtn.textContent = 'Play';
+  const p = document.getElementById('comboPrompt').value;
+  document.getElementById('comboUserPrompt').textContent = prompts[p];
+  comboOutput.textContent = currentComboPlan().starter;
+  comboPhaseStatus.textContent = 'Ready.';
+  comboBars.innerHTML = '';
+  renderComboContext();
+}
+function renderComboTempValue() {
+  const t = parseFloat(comboTempSlider.value) || 1;
+  comboTempValue.textContent = t.toFixed(1);
+}
+function comboStep() {
+  if (combo.done) { comboPhaseStatus.textContent = 'Done. Press Reset.'; return; }
+  const plan = currentComboPlan();
+  const stepIdx = combo.generated.length;
+  if (stepIdx >= plan.timeline.length) {
+    // Safety fallback: if a plan is ever exhausted before stop, force stop now.
+    combo.generated.push('<|stop|>');
+    renderBars(comboBars, ['<|stop|>'], [1], 'after', 0);
+    renderComboContext();
+    combo.done = true;
+    combo.running = false;
+    comboPlayBtn.textContent = 'Reset';
+    comboPhaseStatus.textContent = 'Stop token forced at end of plan. Combined generation halted.';
+    return;
+  }
+  const candidates = plan.timeline[stepIdx];
+  const probs = getComboBaseProbs(stepIdx, candidates.length);
+  const temp = parseFloat(document.getElementById('comboTemp').value);
+  const after = softmaxTemp(probs, temp);
+  const selectedIdx = weightedSample(after);
+  const selected = candidates[selectedIdx] ?? candidates[0];
+  renderBars(comboBars, candidates, after, 'after', selectedIdx);
+  combo.generated.push(selected);
+  if (selected !== '<|stop|>') {
+    comboOutput.textContent += selected;
+    comboPhaseStatus.textContent = `Sampled "${selected.trim()}" after temperature ${temp.toFixed(1)}.`;
+  } else {
+    comboPhaseStatus.textContent = 'Stop token sampled. Combined generation halted.';
+    combo.done = true;
+    combo.running = false;
+    comboPlayBtn.textContent = 'Reset';
+  }
+  renderComboContext();
+}
+function comboPlayToggle() {
+  if (combo.running || combo.generated.length > 0 || combo.done) {
+    resetCombo();
+    return;
+  }
+  combo.running = true;
+  comboPlayBtn.textContent = 'Reset';
+  comboPhaseStatus.textContent = 'Running... click Reset anytime to restart.';
+  const tick = () => {
+    if (!combo.running || combo.done) return;
+    comboStep();
+    const speed = parseFloat(document.getElementById('comboSpeed').value) || 1;
+    combo.timer = setTimeout(tick, Math.max(250, Math.round(900 / speed)));
+  };
+  tick();
+}
+comboPlayBtn.addEventListener('click', comboPlayToggle);
+document.getElementById('comboStepBtn').addEventListener('click', () => {
+  combo.running = false;
+  clearTimeout(combo.timer);
+  if (!combo.done) comboPlayBtn.textContent = 'Reset';
+  comboStep();
+});
+document.getElementById('comboPrompt').addEventListener('change', resetCombo);
+comboTempSlider.addEventListener('input', renderComboTempValue);
+
+// Glossary
+function populateGlossary() {
+  const body = document.getElementById('glossaryBody');
+  body.innerHTML = '';
+  Object.keys(glossaryEntries).forEach((key) => {
+    const g = glossaryEntries[key];
+    const div = document.createElement('div');
+    div.className = 'g-item';
+    div.id = 'glossary-' + key;
+    div.innerHTML = `<div class="g-term" onclick="toggleGlossaryItem('${key}')">${g.term}</div><div class="g-content" id="glossary-content-${key}"><div class="g-short">${g.short}</div><div class="g-detail">${g.detail}</div></div>`;
+    body.appendChild(div);
+  });
+}
+function toggleGlossaryItem(key) {
+  const item = document.getElementById('glossary-' + key);
+  if (!item) return;
+  item.classList.toggle('expanded');
+}
+function openGlossary(keyToScroll) {
+  document.getElementById('glossaryPanel').classList.add('open');
+  if (keyToScroll) {
+    setTimeout(() => {
+      const el = document.getElementById('glossary-' + keyToScroll);
+      if (el) {
+        el.classList.add('expanded');
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 220);
+  }
+}
+function closeGlossary() { document.getElementById('glossaryPanel').classList.remove('open'); }
+
+document.addEventListener('click', (e) => {
+  const tooltipBox = e.target.closest('.tooltip-text');
+  const glossaryPanel = document.getElementById('glossaryPanel');
+
+  if (tooltipBox) {
+    const tooltip = tooltipBox.closest('.tooltip[data-glossary]');
+    e.preventDefault();
+    e.stopPropagation();
+    openGlossary(tooltip ? tooltip.getAttribute('data-glossary') : null);
+    return;
+  }
+
+  if (glossaryPanel.classList.contains('open')) {
+    if (!e.target.closest('#glossaryPanel') && !e.target.closest('.glossary-btn')) {
+      closeGlossary();
+    }
+  }
+});
+
+populateGlossary();
+initPromptSelectors();
+renderStageNav();
+resetStopStage();
+renderComboTempValue();
+resetCombo();
+</script>
+</body>
+</html>
