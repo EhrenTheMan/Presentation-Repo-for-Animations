@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Generation: Temp + Stop Token</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            position: relative; /* For the hint banner */
+        }
+        
+        /* Hint Banner CSS */
+        .hint-banner {
+            position: absolute;
+            top: 20px;
+            background-color: #007acc;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: slideIn 0.5s ease forwards 0.5s, fadeOut 0.5s ease forwards 8s;
+        }
+        .close-hint {
+            cursor: pointer;
+            font-size: 16px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .close-hint:hover {
+            opacity: 1;
+        }
+        @keyframes slideIn {
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeOut {
+            100% { opacity: 0; visibility: hidden; }
+        }
+
+        /* Container & Main Layout */
+        .container {
+            background-color: #1e1e1e;
+            width: 900px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            overflow: visible; 
+        }
+        .header {
+            background-color: #2c2c2c;
+            padding: 15px 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            border-bottom: 1px solid #3c3c3c;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-title {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .header-title span {
+            font-size: 18px;
+        }
+        .prompt-select {
+            margin-top: 8px;
+            background: #444;
+            color: white;
+            border: 1px solid #555;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #ddd;
+            background-color: #333;
+            border-radius: 6px;
+            padding: 6px 8px;
+        }
+        .speed-control select {
+            background-color: #444;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 4px 6px;
+            font-size: 12px;
+            outline: none;
+        }
+        .radio-group {
+            display: flex;
+            gap: 10px;
+            font-size: 14px;
+        }
+        .radio-group label {
+            cursor: pointer;
+            padding: 4px 8px;
+            background-color: #333;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .radio-group label:hover {
+            background-color: #444;
+        }
+        .radio-group input:checked + span {
+            color: #00aaff;
+            font-weight: bold;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            color: #888;
+        }
+        .main-content {
+            display: flex;
+            height: 500px;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            background-color: #1e1e1e;
+        }
+        .left-panel {
+            flex: 6;
+            display: flex;
+            flex-direction: column;
+            border-right: 2px dashed #444;
+        }
+        .chat-ui {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+        .label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+        .bubble {
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 90%;
+            line-height: 1.4;
+            font-size: 14px;
+        }
+        .user-bubble {
+            background-color: #005c4b;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+        }
+        .ai-bubble {
+            background-color: #333333;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+        .engine-view {
+            padding: 15px;
+            background-color: #0a0a0a;
+            min-height: 120px;
+            border-top: 1px solid #333;
+            border-bottom-left-radius: 12px;
+        }
+        .token-stream {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+        }
+        .token {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            padding: 3px 6px;
+            border-radius: 4px;
+            animation: popIn 0.2s ease forwards;
+        }
+        .token.stop-token {
+            background-color: #660000;
+            border-color: #ff3333;
+            color: #ff9999;
+            font-weight: bold;
+        }
+        .right-panel {
+            flex: 4;
+            padding: 20px;
+            background-color: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            border-bottom-right-radius: 12px;
+        }
+        .prob-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            height: 24px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+        }
+        .arrow {
+            width: 20px;
+            color: #4CAF50;
+            font-weight: bold;
+            visibility: hidden;
+        }
+        .word {
+            width: 80px;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bar-container {
+            flex-grow: 1;
+            background-color: #333;
+            height: 100%;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            margin: 0 10px;
+        }
+        .bar {
+            background-color: #007acc;
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease, background-color 0.2s;
+        }
+        .percent {
+            width: 40px;
+            text-align: right;
+            color: #aaa;
+        }
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background-color: #fff;
+            vertical-align: middle;
+            margin-left: 2px;
+            animation: blink 1s step-end infinite;
+        }
+        
+        /* Tooltip CSS */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            border-bottom: 1px dotted #aaa;
+        }
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 220px;
+            background-color: #2b2b2b;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 10;
+            bottom: 150%;
+            left: 50%;
+            margin-left: -122px;
+            opacity: 0;
+            transition: opacity 0.25s ease 1.5s, visibility 0s linear 1.75s;
+            font-size: 12px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: normal;
+            text-transform: none;
+            letter-spacing: normal;
+            border: 1px solid #595959;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+            pointer-events: auto;
+        }
+        .tooltip .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #2c2c2c transparent transparent transparent;
+        }
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+            transition: opacity 0.12s ease, visibility 0s;
+        }
+
+        /* Glossary Sidebar */
+        .glossary-overlay {
+            position: fixed;
+            top: 0; right: 0; bottom: 0;
+            width: 380px;
+            background-color: #161d31;
+            border-left: 2px solid #007acc;
+            box-shadow: -5px 0 25px rgba(0,0,0,0.7);
+            z-index: 200;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        .glossary-overlay.open {
+            transform: translateX(0);
+        }
+        .glossary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background-color: #007acc;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .glossary-close {
+            cursor: pointer;
+            font-size: 20px;
+            background: none;
+            border: none;
+            color: white;
+            padding: 0 4px;
+        }
+        .glossary-body {
+            padding: 12px;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .glossary-item {
+            margin-bottom: 0;
+            background: #1d2740;
+            border: 1px solid #304168;
+            border-radius: 8px;
+        }
+        .glossary-term {
+            color: #6fd1ff;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+        }
+        .glossary-term::after {
+            content: '▾';
+            font-size: 12px;
+            color: #9eb1df;
+            transition: transform 0.2s ease;
+        }
+        .glossary-item.expanded .glossary-term::after {
+            transform: rotate(180deg);
+        }
+        .glossary-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.25s ease;
+            padding: 0 10px;
+        }
+        .glossary-item.expanded .glossary-content {
+            max-height: 420px;
+            padding: 0 10px 10px;
+        }
+        .glossary-short {
+            color: #ddd;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 6px;
+        }
+        .glossary-detail {
+            color: #9eb1df;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .glossary-detail strong {
+            color: #ddd;
+        }
+
+        /* Back Button */
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            background-color: #333;
+            color: #ccc;
+            border: 1px solid #555;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            transition: background-color 0.2s;
+            z-index: 50;
+        }
+        .back-btn:hover {
+            background-color: #444;
+            color: #fff;
+        }
+
+        .glossary-btn {
+            position: absolute;
+            right: 20px;
+            bottom: 20px;
+            padding: 10px 16px;
+            background-color: #007acc;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            transition: background-color 0.2s;
+            z-index: 120;
+        }
+        .glossary-btn:hover {
+            background-color: #0098ff;
+        }
+        
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+<a href="index.html" class="back-btn">← Back</a>
+<button class="glossary-btn" onclick="openGlossary()">📖 Glossary</button>
+
+<div class="hint-banner" id="hintBanner">
+    💡 Hint: Open glossary by clicking the mini-definition bubble or the Glossary button (bottom-right). 
+    <span class="close-hint" onclick="document.getElementById('hintBanner').style.display='none'">✕</span>
+</div>
+
+<div class="glossary-overlay" id="glossaryPanel">
+    <div class="glossary-header">
+        <span>📖 Glossary</span>
+        <button class="glossary-close" onclick="closeGlossary()">✕</button>
+    </div>
+    <div class="glossary-body" id="glossaryBody">
+        <!-- Glossary items will be injected here -->
+    </div>
+</div>
+
+<div class="container">
+    <div class="header">
+        <div class="header-title">
+            <span>Live Generation Engine</span>
+            <select id="promptSelect" class="prompt-select">
+                <option value="suv">Prompt: Full-Size Family SUV</option>
+                <option value="city">Prompt: Efficient City Commuter</option>
+                <option value="truck">Prompt: Off-Road Capable Truck</option>
+            </select>
+        </div>
+        <div class="controls">
+            <div class="radio-group">
+                <label>
+                    <input type="radio" name="temp" value="low" checked> 
+                    <span class="tooltip" data-glossary="temperature">Low Temp
+                        <span class="tooltip-text">Temperature is a number (0–2) that controls randomness. At 0.1, the model is nearly deterministic — it almost always picks the highest-probability word.</span>
+                    </span>
+                </label>
+                <label>
+                    <input type="radio" name="temp" value="med"> 
+                    <span class="tooltip" data-glossary="temperature">Med Temp
+                        <span class="tooltip-text">At the default temperature of 1.0, the probability distribution is unchanged — the model picks likely words most of the time but occasionally samples creative alternatives.</span>
+                    </span>
+                </label>
+                <label>
+                    <input type="radio" name="temp" value="high"> 
+                    <span class="tooltip" data-glossary="temperature">High Temp
+                        <span class="tooltip-text">At 2.0, temperature flattens the probability curve — unlikely words become almost as probable as likely ones, producing chaotic or highly creative output.</span>
+                    </span>
+                </label>
+            </div>
+            <div class="speed-control">
+                <label for="speedSelect">Speed</label>
+                <select id="speedSelect">
+                    <option value="0.5">0.5x</option>
+                    <option value="1" selected>1.0x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2.0x</option>
+                    <option value="3">3.0x</option>
+                </select>
+            </div>
+            <button id="generateBtn">Start Generation</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="left-panel">
+            <div class="chat-ui">
+                <div>
+                    <div class="label" style="text-align: right;">User</div>
+                    <div class="bubble user-bubble" id="userBubble">
+                        I’m looking for a new Full-Size SUV with loads of room for family, with driver focused comfort features.
+                    </div>
+                </div>
+                <div>
+                    <div class="label">AI Assistant</div>
+                    <div class="bubble ai-bubble" id="aiOutput">Sure, there are several Stellantis vehicles that could fit those needs. One<span class="cursor" id="cursor"></span></div>
+                </div>
+            </div>
+            <div class="engine-view">
+                <div class="label">
+                    <span class="tooltip" data-glossary="token">Token Stream
+                        <span class="tooltip-text">A "token" is a piece of a word. LLMs don't think in sentences; they predict text one token at a time.</span>
+                    </span> (Engine Output)
+                </div>
+                <div class="token-stream" id="tokenStream"></div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="label" style="margin-bottom: 20px;">
+                Next Token <span class="tooltip" data-glossary="probabilities">Probabilities
+                    <span class="tooltip-text">Before generating the next token, the AI calculates the mathematical likelihood of every single known word based on its training.</span>
+                </span>
+            </div>
+            <div id="probList">
+                </div>
+            <div class="label" id="statusText" style="margin-top: auto; color: #888; font-style: italic; overflow: visible;">Ready...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const promptsData = {
+        suv: {
+            prompt: "I’m looking for a new Full-Size SUV with loads of room for family, with driver focused comfort features.",
+            initialText: "Sure, there are several Stellantis vehicles that could fit those needs. One",
+            sequences: {
+                low: [
+                    { text: " option", alts: [" popular", " vehicle", " choice", " good"], targetProb: 97, altProbs: [1, 1, 0.5, 0.5] },
+                    { text: " for", alts: [" to", " is", " that", " with"], targetProb: 95, altProbs: [2, 1, 1, 1] },
+                    { text: " a", alts: [" the", " your", " this", " an"], targetProb: 98, altProbs: [1, 0.5, 0.3, 0.2] },
+                    { text: " full-size", alts: [" large", " big", " family", " great"], targetProb: 92, altProbs: [3, 2, 2, 1] },
+                    { text: " SUV", alts: [" vehicle", " car", " truck", " option"], targetProb: 99, altProbs: [0.5, 0.2, 0.2, 0.1] },
+                    { text: " is", alts: [" would", " could", " might", " includes"], targetProb: 96, altProbs: [2, 1, 0.5, 0.5] },
+                    { text: " the", alts: [" a", " this", " one", " our"], targetProb: 98, altProbs: [1, 0.5, 0.3, 0.2] },
+                    { text: " Jeep", alts: [" Dodge", " Chrysler", " Ram", " Fiat"], targetProb: 85, altProbs: [10, 3, 1, 1] },
+                    { text: " Wagoneer.", alts: [" Cherokee.", " Durango.", " Pacifica.", " model."], targetProb: 95, altProbs: [2, 1, 1, 1] },
+                    { text: " It", alts: [" The", " This", " You", " They"], targetProb: 90, altProbs: [5, 3, 1, 1] },
+                    { text: " offers", alts: [" has", " provides", " comes", " gives"], targetProb: 85, altProbs: [5, 5, 3, 2] },
+                    { text: " a", alts: [" an", " the", " great", " lots"], targetProb: 95, altProbs: [2, 1, 1, 1] },
+                    { text: " spacious", alts: [" large", " big", " roomy", " comfortable"], targetProb: 80, altProbs: [10, 5, 3, 2] },
+                    { text: " interior", alts: [" cabin", " inside", " design", " space"], targetProb: 85, altProbs: [5, 5, 3, 2] },
+                    { text: " and", alts: [" with", " plus", " as", " for"], targetProb: 90, altProbs: [5, 3, 1, 1] },
+                    { text: " premium", alts: [" luxury", " top", " great", " high-end"], targetProb: 75, altProbs: [10, 5, 5, 5] },
+                    { text: " features.", alts: [" options.", " materials.", " tech.", " finishes."], targetProb: 80, altProbs: [10, 5, 3, 2] },
+                    { text: "<|stop|>", type: "stop", alts: ["\\n", " You", " The", " It"], targetProb: 99, altProbs: [0.5, 0.2, 0.2, 0.1] }
+                ],
+                med: [
+                    { text: " solid", alts: [" option", " vehicle", " popular", " good"], targetProb: 25, altProbs: [45, 15, 10, 5] },
+                    { text: " vehicle", alts: [" choice", " SUV", " pick", " option"], targetProb: 35, altProbs: [40, 15, 6, 4] },
+                    { text: " to", alts: [" is", " for", " that", " with"], targetProb: 60, altProbs: [20, 10, 5, 5] },
+                    { text: " consider", alts: [" buy", " look", " check", " test"], targetProb: 40, altProbs: [30, 15, 10, 5] },
+                    { text: " is", alts: [" would", " might", " could", " includes"], targetProb: 80, altProbs: [10, 5, 3, 2] },
+                    { text: " the", alts: [" a", " this", " our", " one"], targetProb: 85, altProbs: [8, 4, 2, 1] },
+                    { text: " Dodge", alts: [" Jeep", " Chrysler", " Ram", " Fiat"], targetProb: 30, altProbs: [55, 10, 3, 2] },
+                    { text: " Durango.", alts: [" Wagoneer.", " Cherokee.", " Hornet.", " Journey."], targetProb: 65, altProbs: [15, 10, 5, 5] },
+                    { text: " While", alts: [" It", " This", " With", " The"], targetProb: 40, altProbs: [30, 15, 10, 5] },
+                    { text: " it", alts: [" the", " its", " they", " some"], targetProb: 70, altProbs: [15, 5, 5, 5] },
+                    { text: " packs", alts: [" has", " offers", " comes", " delivers"], targetProb: 35, altProbs: [40, 15, 5, 5] },
+                    { text: " serious", alts: [" great", " strong", " a lot of", " impressive"], targetProb: 45, altProbs: [25, 15, 10, 5] },
+                    { text: " power,", alts: [" performance,", " towing,", " torque,", " capability,"], targetProb: 50, altProbs: [25, 15, 5, 5] },
+                    { text: " the", alts: [" it", " its", " driver", " interior"], targetProb: 65, altProbs: [15, 10, 5, 5] },
+                    { text: " three-row", alts: [" interior", " cabin", " seating", " comfortable"], targetProb: 40, altProbs: [30, 20, 5, 5] },
+                    { text: " cabin", alts: [" interior", " seating", " layout", " space"], targetProb: 55, altProbs: [25, 10, 5, 5] },
+                    { text: " keeps", alts: [" makes", " ensures", " provides", " leaves"], targetProb: 45, altProbs: [30, 15, 5, 5] },
+                    { text: " families", alts: [" everyone", " passengers", " kids", " you"], targetProb: 50, altProbs: [25, 15, 5, 5] },
+                    { text: " happy.", alts: [" comfortable.", " relaxed.", " safe.", " content."], targetProb: 60, altProbs: [20, 10, 5, 5] },
+                    { text: "<|stop|>", type: "stop", alts: ["\\n", " The", " It", " You"], targetProb: 90, altProbs: [5, 3, 1, 1] }
+                ],
+                high: [
+                    { text: " surprisingly", alts: [" great", " solid", " interesting", " unexpected"], targetProb: 15, altProbs: [30, 25, 20, 10] },
+                    { text: " luxurious", alts: [" practical", " fast", " roomy", " capable"], targetProb: 18, altProbs: [25, 22, 20, 15] },
+                    { text: " route", alts: [" option", " choice", " path", " vehicle"], targetProb: 14, altProbs: [35, 25, 15, 11] },
+                    { text: " would", alts: [" could", " might", " is", " will"], targetProb: 25, altProbs: [35, 20, 15, 5] },
+                    { text: " be", alts: [" involve", " mean", " require", " point"], targetProb: 40, altProbs: [30, 15, 10, 5] },
+                    { text: " the", alts: [" a", " looking", " checking", " getting"], targetProb: 60, altProbs: [15, 10, 10, 5] },
+                    { text: " Grand", alts: [" Jeep", " Wagoneer", " Chrysler", " Dodge"], targetProb: 22, altProbs: [40, 20, 10, 8] },
+                    { text: " Cherokee", alts: [" Wagoneer", " Caravan", " Durango", " model"], targetProb: 75, altProbs: [10, 5, 5, 5] },
+                    { text: " L.", alts: [" SUV.", " trim.", " line.", " edition."], targetProb: 65, altProbs: [15, 10, 5, 5] },
+                    { text: " Beyond", alts: [" It", " With", " The", " Offering"], targetProb: 15, altProbs: [40, 25, 15, 5] },
+                    { text: " simply", alts: [" just", " merely", " purely", " getting"], targetProb: 25, altProbs: [35, 20, 15, 5] },
+                    { text: " hauling", alts: [" moving", " transporting", " taking", " driving"], targetProb: 30, altProbs: [30, 20, 10, 10] },
+                    { text: " people,", alts: [" everyone,", " families,", " kids,", " cargo,"], targetProb: 40, altProbs: [30, 15, 10, 5] },
+                    { text: " the", alts: [" it", " its", " driver", " front"], targetProb: 45, altProbs: [30, 15, 5, 5] },
+                    { text: " driver", alts: [" front", " interior", " cabin", " experience"], targetProb: 35, altProbs: [30, 20, 10, 5] },
+                    { text: " gets", alts: [" enjoys", " has", " experiences", " feels"], targetProb: 40, altProbs: [25, 20, 10, 5] },
+                    { text: " standard", alts: [" premium", " real", " pure", " true"], targetProb: 20, altProbs: [30, 25, 15, 10] },
+                    { text: " massage", alts: [" heated", " ventilated", " leather", " comfort"], targetProb: 18, altProbs: [35, 25, 15, 7] },
+                    { text: " seats", alts: [" chairs", " options", " settings", " features"], targetProb: 55, altProbs: [25, 10, 5, 5] },
+                    { text: " and", alts: [" with", " plus", " alongside", " next"], targetProb: 60, altProbs: [20, 10, 5, 5] },
+                    { text: " quiet", alts: [" silent", " peaceful", " calm", " relaxed"], targetProb: 22, altProbs: [30, 25, 15, 8] },
+                    { text: " cruising.", alts: [" driving.", " riding.", " highways.", " comfort."], targetProb: 35, altProbs: [30, 20, 10, 5] },
+                    { text: "<|stop|>", type: "stop", alts: ["\\n", " You", " The", " It"], targetProb: 80, altProbs: [10, 5, 3, 2] }
+                ]
+            }
+        },
+        city: {
+            prompt: "Can you recommend a compact car for city driving that gets great gas mileage?",
+            initialText: "For city driving with excellent fuel economy, the",
+            sequences: {
+                low: [
+                    { text: " Fiat", alts: [" Dodge", " Chrysler", " Jeep"], targetProb: 80, altProbs: [10, 5, 5] },
+                    { text: " 500e", alts: [" Hornet", " Pacifica", " Compass"], targetProb: 85, altProbs: [5, 5, 5] },
+                    { text: " is", alts: [" offers", " provides", " stands"], targetProb: 90, altProbs: [5, 3, 2] },
+                    { text: " a", alts: [" the", " an", " one"], targetProb: 95, altProbs: [3, 1, 1] },
+                    { text: " fantastic", alts: [" great", " solid", " good"], targetProb: 70, altProbs: [15, 10, 5] },
+                    { text: " choice.", alts: [" option.", " vehicle.", " pick."], targetProb: 80, altProbs: [10, 5, 5] },
+                    { text: " It", alts: [" The", " This", " As", " Because"], targetProb: 85, altProbs: [5, 5, 3, 2] },
+                    { text: " is", alts: [" has", " offers", " provides", " delivers"], targetProb: 90, altProbs: [5, 3, 1, 1] },
+                    { text: " fully", alts: [" all", " entirely", " completely", " an"], targetProb: 80, altProbs: [10, 5, 3, 2] },
+                    { text: " electric,", alts: [" battery,", " EV,", " zero-emission,", " green,"], targetProb: 95, altProbs: [2, 1, 1, 1] },
+                    { text: " meaning", alts: [" so", " which", " and", " therefore"], targetProb: 85, altProbs: [5, 5, 3, 2] },
+                    { text: " you", alts: [" it", " drivers", " the", " owners"], targetProb: 90, altProbs: [5, 3, 1, 1] },
+                    { text: " use", alts: [" burn", " need", " require", " consume"], targetProb: 80, altProbs: [10, 5, 3, 2] },
+                    { text: " no", alts: [" zero", " less", " little", " hardly"], targetProb: 95, altProbs: [2, 1, 1, 1] },
+                    { text: " gas", alts: [" fuel", " petrol", " energy", " emissions"], targetProb: 90, altProbs: [5, 3, 1, 1] },
+                    { text: " at", alts: [" what", " during", " on", " in"], targetProb: 95, altProbs: [2, 1, 1, 1] },
+                    { text: " all.", alts: [" whatsoever.", " present.", " times.", " home."], targetProb: 98, altProbs: [1, 0.5, 0.3, 0.2] },
+                    { text: "<|stop|>", type: "stop", alts: ["\\n", " It", " The", " You"], targetProb: 95, altProbs: [3, 1, 1] }
+                ],
+                med: [
+                    { text: " Dodge", alts: [" Fiat", " Chrysler", " Jeep"], targetProb: 45, altProbs: [35, 15, 5] },
+                    { text: " Hornet", alts: [" 500e", " Pacifica", " Compass"], targetProb: 50, altProbs: [30, 10, 10] },
+                    { text: " plug-in", alts: [" hybrid", " model", " PHEV"], targetProb: 40, altProbs: [30, 20, 10] },
+                    { text: " hybrid", alts: [" model", " version", " powertrain"], targetProb: 60, altProbs: [20, 10, 10] },
+                    { text: " offers", alts: [" provides", " gives", " delivers"], targetProb: 50, altProbs: [25, 15, 10] },
+                    { text: " a", alts: [" great", " solid", " fantastic"], targetProb: 60, altProbs: [20, 10, 10] },
+                    { text: " great", alts: [" nice", " strong", " wonderful"], targetProb: 55, altProbs: [25, 10, 10] },
+                    { text: " balance.", alts: [" mix.", " compromise.", " option."], targetProb: 45, altProbs: [30, 15, 10] },
+                    { text: " You", alts: [" It", " Drivers", " Owners", " The"], targetProb: 50, altProbs: [25, 15, 5, 5] },
+                    { text: " get", alts: [" have", " experience", " enjoy", " see"], targetProb: 65, altProbs: [20, 5, 5, 5] },
+                    { text: " enough", alts: [" plenty", " sufficient", " good", " ample"], targetProb: 55, altProbs: [25, 10, 5, 5] },
+                    { text: " battery", alts: [" electric", " EV", " pure", " clean"], targetProb: 60, altProbs: [20, 10, 5, 5] },
+                    { text: " range", alts: [" life", " power", " capacity", " driving"], targetProb: 75, altProbs: [10, 5, 5, 5] },
+                    { text: " to", alts: [" for", " that", " so", " allowing"], targetProb: 80, altProbs: [10, 5, 3, 2] },
+                    { text: " handle", alts: [" cover", " do", " manage", " complete"], targetProb: 45, altProbs: [30, 15, 5, 5] },
+                    { text: " daily", alts: [" everyday", " regular", " normal", " city"], targetProb: 60, altProbs: [20, 10, 5, 5] },
+                    { text: " city", alts: [" urban", " town", " local", " street"], targetProb: 50, altProbs: [25, 15, 5, 5] },
+                    { text: " errands", alts: [" driving", " commutes", " trips", " tasks"], targetProb: 40, altProbs: [30, 20, 5, 5] },
+                    { text: " without", alts: [" avoiding", " saving", " skipping", " stopping"], targetProb: 65, altProbs: [20, 5, 5, 5] },
+                    { text: " touching", alts: [" using", " burning", " needing", " starting"], targetProb: 35, altProbs: [35, 20, 5, 5] },
+                    { text: " fuel.", alts: [" gas.", " petrol.", " the.", " engine."], targetProb: 55, altProbs: [25, 10, 5, 5] },
+                    { text: "<|stop|>", type: "stop", alts: ["\\n", " It", " Plus,"], targetProb: 85, altProbs: [5, 5, 5] }
+                ],
+                high: [
+                    { text: " surprisingly", alts: [" little", " quick", " agile", " nimble"], targetProb: 20, altProbs: [30, 25, 15, 10] },
+                    { text: " practical", alts: [" compact", " city", " urban", " small"], targetProb: 25, altProbs: [30, 20, 15, 10] },
+                    { text: " Jeep", alts: [" Fiat", " Dodge", " Chrysler", " vehicle"], targetProb: 22, altProbs: [30, 25, 15, 8] },
+                    { text: " Compass", alts: [" Renegade", " Hornet", " 500", " model"], targetProb: 35, altProbs: [30, 20, 10, 5] },
+                    { text: " 4xe", alts: [" hybrid", " PHEV", " model", " trim"], targetProb: 40, altProbs: [25, 20, 10, 5] },
+                    { text: " is", alts: [" makes", " offers", " provides", " delivers"], targetProb: 45, altProbs: [25, 15, 10, 5] },
+                    { text: " worth", alts: [" good", " great", " fine", " ideal"], targetProb: 30, altProbs: [30, 20, 15, 5] },
+                    { text: " testing.", alts: [" looking.", " driving.", " checking.", " considering."], targetProb: 35, altProbs: [30, 20, 10, 5] },
+                    { text: " It", alts: [" The", " You", " While", " This"], targetProb: 40, altProbs: [25, 15, 10, 10] },
+                    { text: " bridges", alts: [" blends", " mixes", " combines", " connects"], targetProb: 25, altProbs: [30, 25, 10, 10] },
+                    { text: " the", alts: [" a", " that", " their", " some"], targetProb: 65, altProbs: [15, 10, 5, 5] },
+                    { text: " gap", alts: [" divide", " space", " distance", " difference"], targetProb: 35, altProbs: [30, 20, 10, 5] },
+                    { text: " between", alts: [" from", " across", " over", " through"], targetProb: 55, altProbs: [25, 10, 5, 5] },
+                    { text: " navigating", alts: [" driving", " handling", " surviving", " tackling"], targetProb: 20, altProbs: [35, 25, 10, 10] },
+                    { text: " tight", alts: [" small", " narrow", " crowded", " urban"], targetProb: 30, altProbs: [30, 25, 10, 5] },
+                    { text: " parking", alts: [" city", " street", " urban", " road"], targetProb: 40, altProbs: [30, 15, 10, 5] },
+                    { text: " structures", alts: [" lots", " spaces", " garages", " spots"], targetProb: 25, altProbs: [35, 25, 10, 5] },
+                    { text: " quietly", alts: [" silently", " calmly", " easily", " smoothly"], targetProb: 22, altProbs: [30, 25, 15, 8] },
+                    { text: " on", alts: [" in", " with", " using", " by"], targetProb: 50, altProbs: [25, 15, 5, 5] },
+                    { text: " battery,", alts: [" electric,", " EV,", " charge,", " power,"], targetProb: 45, altProbs: [30, 15, 5, 5] },
+                    { text: " while", alts: [" and", " but", " yet", " also"], targetProb: 40, altProbs: [30, 15, 10, 5] },
+                    { text: " still", alts: [" also", " yet", " maintaining", " keeping"], targetProb: 55, altProbs: [20, 15, 5, 5] },
+                    { text: " surviving", alts: [" handling", " tackling", " managing", " beating"], targetProb: 18, altProbs: [35, 25, 15, 7] },
+                    { text: " potholed", alts: [" rough", " broken", " bad", " bumpy"], targetProb: 25, altProbs: [35, 20, 15, 5] },
+                    { text: " avenues.", alts: [" streets.", " roads.", " tarmac.", " paths."], targetProb: 30, altProbs: [30, 25, 10, 5] },
+                    { text: "<|stop|>", type: "stop", alts: ["\\n", " You", " It", " Plus,"], targetProb: 75, altProbs: [10, 10, 5] }
+                ]
+            }
+        },
+        truck: {
+            prompt: "What are some good options for an off-road capable truck?",
+            initialText: "If you want a highly capable off-road truck, the",
+            sequences: {
+                low: [
+                    { text: " Ram", alts: [" Jeep", " Dodge", " Chrysler"], targetProb: 85, altProbs: [10, 3, 2] },
+                    { text: " 1500", alts: [" TRX", " Rebel", " Power"], targetProb: 80, altProbs: [10, 5, 5] },
+                    { text: " TRX", alts: [" Rebel", " model", " truck"], targetProb: 75, altProbs: [15, 5, 5] },
+                    { text: " is", alts: [" offers", " remains", " stands"], targetProb: 90, altProbs: [5, 3, 2] },
+                    { text: " an", alts: [" a", " the", " one"], targetProb: 95, altProbs: [3, 1, 1] },
+                    { text: " absolute", alts: [" amazing", " incredible", " off-road"], targetProb: 60, altProbs: [20, 10, 10] },
+                    { text: " beast.", alts: [" machine.", " truck.", " option."], targetProb: 70, altProbs: [15, 10, 5] },
+                    { text: " It", alts: [" This", " The", " You", " Ram"], targetProb: 85, altProbs: [5, 5, 3, 2] },
+                    { text: " features", alts: [" has", " offers", " comes", " includes"], targetProb: 80, altProbs: [10, 5, 3, 2] },
+                    { text: " a", alts: [" an", " massive", " supercharged", " very"], targetProb: 90, altProbs: [5, 3, 1, 1] },
+                    { text: " supercharged", alts: [" powerful", " huge", " massive", " large"], targetProb: 85, altProbs: [5, 5, 3, 2] },
+                    { text: " V8", alts: [" engine", " motor", " HEMI", " powertrain"], targetProb: 90, altProbs: [5, 3, 1, 1] },
+                    { text: " engine", alts: [" motor", " block", " power", " unit"], targetProb: 95, altProbs: [2, 1, 1, 1] },
+                    { text: " and", alts: [" with", " plus", " as", " alongside"], targetProb: 90, altProbs: [5, 3, 1, 1] },
+                    { text: " specialized", alts: [" custom", " off-road", " advanced", " heavy"], targetProb: 75, altProbs: [10, 5, 5, 5] },
+                    { text: " suspension.", alts: [" shocks.", " gear.", " parts.", " components."], targetProb: 80, altProbs: [10, 5, 3, 2] },
+                    { text: "<|stop|>", type: "stop", alts: ["\\n", " It", " With"], targetProb: 95, altProbs: [3, 1, 1] }
+                ],
+                med: [
+                    { text: " Jeep", alts: [" Ram", " Dodge", " Stellantis"], targetProb: 55, altProbs: [35, 5, 5] },
+                    { text: " Gladiator", alts: [" Wrangler", " 1500", " truck"], targetProb: 60, altProbs: [25, 10, 5] },
+                    { text: " Rubicon", alts: [" Mojave", " model", " trim"], targetProb: 50, altProbs: [30, 10, 10] },
+                    { text: " handles", alts: [" tackles", " drives", " conquers"], targetProb: 40, altProbs: [30, 20, 10] },
+                    { text: " rough", alts: [" tough", " off-road", " rocky"], targetProb: 45, altProbs: [25, 20, 10] },
+                    { text: " trails", alts: [" terrain", " paths", " roads"], targetProb: 50, altProbs: [30, 10, 10] },
+                    { text: " with", alts: [" easily", " very", " incredibly"], targetProb: 65, altProbs: [20, 10, 5] },
+                    { text: " ease.", alts: [" confidence.", " power.", " capability."], targetProb: 70, altProbs: [15, 10, 5] },
+                    { text: " Unlike", alts: [" While", " Because", " Since", " As"], targetProb: 45, altProbs: [30, 15, 5, 5] },
+                    { text: " traditional", alts: [" standard", " other", " regular", " most"], targetProb: 55, altProbs: [25, 10, 5, 5] },
+                    { text: " pickups,", alts: [" trucks,", " vehicles,", " models,", " options,"], targetProb: 60, altProbs: [20, 10, 5, 5] },
+                    { text: " it", alts: [" the", " this", " Jeep", " they"], targetProb: 75, altProbs: [15, 5, 3, 2] },
+                    { text: " comes", alts: [" has", " features", " offers", " brings"], targetProb: 65, altProbs: [20, 5, 5, 5] },
+                    { text: " with", alts: [" standard", " factory", " equipped", " built"], targetProb: 70, altProbs: [15, 10, 3, 2] },
+                    { text: " solid", alts: [" strong", " heavy", " locking", " real"], targetProb: 45, altProbs: [30, 15, 5, 5] },
+                    { text: " front", alts: [" rear", " locking", " drive", " steel"], targetProb: 50, altProbs: [25, 15, 5, 5] },
+                    { text: " and", alts: [" rear", " back", " side", " with"], targetProb: 80, altProbs: [10, 5, 3, 2] },
+                    { text: " rear", alts: [" back", " axle", " center", " differential"], targetProb: 75, altProbs: [15, 5, 3, 2] },
+                    { text: " axles", alts: [" differentials", " lockers", " components", " gear"], targetProb: 60, altProbs: [20, 10, 5, 5] },
+                    { text: " for", alts: [" to", " ensuring", " bringing", " making"], targetProb: 70, altProbs: [15, 10, 3, 2] },
+                    { text: " rock", alts: [" trail", " off-road", " mountain", " extreme"], targetProb: 55, altProbs: [25, 10, 5, 5] },
+                    { text: " crawling.", alts: [" driving.", " climbing.", " running.", " trails."], targetProb: 65, altProbs: [20, 10, 3, 2] },
+                    { text: "<|stop|>", type: "stop", alts: ["\\n", " It", " The"], targetProb: 85, altProbs: [5, 5, 5] }
+                ],
+                high: [
+                    { text: " surprisingly", alts: [" capable", " large", " specialized", " impressive"], targetProb: 20, altProbs: [30, 25, 15, 10] },
+                    { text: " agile", alts: [" fast", " quick", " large", " capable"], targetProb: 15, altProbs: [35, 25, 15, 10] },
+                    { text: " Ram", alts: [" Jeep", " Dodge", " model", " truck"], targetProb: 25, altProbs: [35, 20, 10, 10] },
+                    { text: " 2500", alts: [" 1500", " Rebel", " Power", " TRX"], targetProb: 30, altProbs: [30, 20, 10, 10] },
+                    { text: " Power", alts: [" Rebel", " TRX", " Heavy", " HD"], targetProb: 40, altProbs: [30, 15, 10, 5] },
+                    { text: " Wagon", alts: [" Duty", " Truck", " Edition", " model"], targetProb: 70, altProbs: [15, 5, 5, 5] },
+                    { text: " deserves", alts: [" needs", " warrants", " gets", " is"], targetProb: 35, altProbs: [30, 20, 10, 5] },
+                    { text: " a", alts: [" some", " real", " closer", " your"], targetProb: 50, altProbs: [25, 15, 5, 5] },
+                    { text: " look.", alts: [" test.", " drive.", " mention.", " shout."], targetProb: 45, altProbs: [30, 15, 5, 5] },
+                    { text: " It", alts: [" The", " This", " While", " Because"], targetProb: 55, altProbs: [20, 15, 5, 5] },
+                    { text: " essentially", alts: [" basically", " practically", " literally", " simply"], targetProb: 25, altProbs: [30, 25, 10, 10] },
+                    { text: " takes", alts: [" uses", " puts", " builds", " grabs"], targetProb: 35, altProbs: [30, 20, 10, 5] },
+                    { text: " heavy-duty", alts: [" large", " commercial", " big", " extreme"], targetProb: 40, altProbs: [30, 15, 10, 5] },
+                    { text: " towing", alts: [" hauling", " work", " pulling", " load"], targetProb: 35, altProbs: [30, 20, 10, 5] },
+                    { text: " bones", alts: [" parts", " structure", " chassis", " frame"], targetProb: 20, altProbs: [35, 25, 10, 10] },
+                    { text: " and", alts: [" then", " plus", " while", " alongside"], targetProb: 65, altProbs: [20, 5, 5, 5] },
+                    { text: " blends", alts: [" mixes", " combines", " pairs", " matches"], targetProb: 25, altProbs: [35, 20, 10, 10] },
+                    { text: " them", alts: [" it", " those", " everything", " features"], targetProb: 50, altProbs: [25, 15, 5, 5] },
+                    { text: " with", alts: [" alongside", " into", " using", " by"], targetProb: 60, altProbs: [20, 10, 5, 5] },
+                    { text: " sway-bar", alts: [" electronic", " locking", " suspension", " heavy"], targetProb: 30, altProbs: [30, 20, 15, 5] },
+                    { text: " disconnects", alts: [" drops", " releases", " features", " modes"], targetProb: 40, altProbs: [30, 15, 10, 5] },
+                    { text: " and", alts: [" plus", " with", " alongside", " offering"], targetProb: 70, altProbs: [15, 5, 5, 5] },
+                    { text: " locking", alts: [" solid", " heavy", " differential", " tough"], targetProb: 45, altProbs: [25, 15, 10, 5] },
+                    { text: " diffs.", alts: [" differentials.", " axles.", " hubs.", " gears."], targetProb: 60, altProbs: [20, 10, 5, 5] },
+                    { text: " It's", alts: [" You", " This", " That's", " Making"], targetProb: 40, altProbs: [30, 15, 10, 5] },
+                    { text: " a", alts: [" an", " literally", " built", " meant"], targetProb: 65, altProbs: [15, 10, 5, 5] },
+                    { text: " factory-built", alts: [" custom", " heavy", " real", " serious"], targetProb: 35, altProbs: [30, 20, 10, 5] },
+                    { text: " trail", alts: [" off-road", " mountain", " rock", " mud"], targetProb: 45, altProbs: [25, 15, 10, 5] },
+                    { text: " limousine.", alts: [" truck.", " beast.", " rig.", " machine."], targetProb: 18, altProbs: [35, 25, 15, 7] },
+                    { text: "<|stop|>", type: "stop", alts: ["\\n", " You", " Jump"], targetProb: 75, altProbs: [10, 10, 5] }
+                ]
+            }
+        }
+    };
+
+    let currentPromptKey = "suv";
+    
+    const userBubbleEl = document.getElementById('userBubble');
+    const aiOutputEl = document.getElementById('aiOutput');
+    const tokenStreamEl = document.getElementById('tokenStream');
+    const generateBtn = document.getElementById('generateBtn');
+    const probListEl = document.getElementById('probList');
+    const statusTextEl = document.getElementById('statusText');
+    const radios = document.getElementsByName('temp');
+    const promptSelect = document.getElementById('promptSelect');
+    const speedSelect = document.getElementById('speedSelect');
+
+    let isAnimating = false;
+    let stopRequested = false;
+    let activeJumpInterval = null;
+    let activeSampleDelayTimeout = null;
+    let activeTokenDelayTimeout = null;
+
+    function getSpeedMultiplier() {
+        return parseFloat(speedSelect.value) || 1;
+    }
+
+    function getScaledDelay(baseDelayMs) {
+        return Math.max(20, Math.round(baseDelayMs / getSpeedMultiplier()));
+    }
+
+    function clearActiveTimers() {
+        if (activeJumpInterval) {
+            clearInterval(activeJumpInterval);
+            activeJumpInterval = null;
+        }
+        if (activeSampleDelayTimeout) {
+            clearTimeout(activeSampleDelayTimeout);
+            activeSampleDelayTimeout = null;
+        }
+        if (activeTokenDelayTimeout) {
+            clearTimeout(activeTokenDelayTimeout);
+            activeTokenDelayTimeout = null;
+        }
+    }
+
+    function finishGenerationState(statusMessage) {
+        clearActiveTimers();
+        isAnimating = false;
+        stopRequested = false;
+        generateBtn.innerText = 'Start Generation';
+        promptSelect.disabled = false;
+        speedSelect.disabled = false;
+        for (let r of radios) r.disabled = false;
+        if (statusMessage) {
+            statusTextEl.innerHTML = statusMessage;
+        }
+    }
+
+    function requestStopGeneration() {
+        if (!isAnimating) return;
+        stopRequested = true;
+        finishGenerationState('Generation stopped manually.');
+        aiOutputEl.innerHTML = aiOutputEl.innerHTML.replace('<span class="cursor" id="cursor"></span>', '');
+    }
+
+    function initProbPanel() {
+        probListEl.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+            probListEl.innerHTML += `
+                <div class="prob-row">
+                    <div class="arrow" id="arrow-${i}">></div>
+                    <div class="word" id="word-${i}">---</div>
+                    <div class="bar-container">
+                        <div class="bar" id="bar-${i}"></div>
+                    </div>
+                    <div class="percent" id="percent-${i}">0%</div>
+                </div>
+            `;
+        }
+    }
+
+    function resetUI() {
+        tokenStreamEl.innerHTML = '';
+        const data = promptsData[currentPromptKey];
+        userBubbleEl.innerHTML = data.prompt;
+        aiOutputEl.innerHTML = data.initialText + '<span class="cursor" id="cursor"></span>';
+        initProbPanel();
+        statusTextEl.innerHTML = "Ready...";
+    }
+
+    promptSelect.addEventListener('change', (e) => {
+        if (isAnimating) return;
+        currentPromptKey = e.target.value;
+        resetUI();
+    });
+
+    function shuffleAndGetIndexes(targetText, alts, targetProb, altProbs) {
+        let items = [
+            { text: targetText, prob: targetProb, isTarget: true },
+            ...alts.map((alt, i) => ({ text: alt, prob: altProbs[i], isTarget: false }))
+        ];
+        while (items.length < 5) {
+            items.push({ text: "...", prob: 0, isTarget: false });
+        }
+        items.sort((a, b) => b.prob - a.prob);
+        return items;
+    }
+
+    function clearArrows() {
+        for (let i = 0; i < 5; i++) {
+            const arrowEl = document.getElementById(`arrow-${i}`);
+            if (arrowEl) arrowEl.style.visibility = 'hidden';
+            
+            const barEl = document.getElementById(`bar-${i}`);
+            if (barEl) barEl.style.backgroundColor = '#007acc';
+            
+            const wordEl = document.getElementById(`word-${i}`);
+            if (wordEl) wordEl.style.color = '#fff';
+        }
+    }
+
+    generateBtn.addEventListener('click', () => {
+        if (isAnimating) {
+            requestStopGeneration();
+            return;
+        }
+
+        isAnimating = true;
+        stopRequested = false;
+        generateBtn.innerText = 'Stop Generation';
+        promptSelect.disabled = true;
+        speedSelect.disabled = false;
+        for(let r of radios) r.disabled = true;
+
+        const hintBanner = document.getElementById('hintBanner');
+        if (hintBanner) hintBanner.style.display = 'none';
+
+        resetUI();
+
+        let selectedTemp = "low";
+        for (let r of radios) { if (r.checked) selectedTemp = r.value; }
+
+        const currentPath = promptsData[currentPromptKey].sequences[selectedTemp];
+        let tokenIndex = 0;
+
+        function processNextToken() {
+            if (stopRequested) {
+                finishGenerationState('Generation stopped manually.');
+                return;
+            }
+
+            if (tokenIndex >= currentPath.length) {
+                finishGenerationState('Generation complete.');
+                return;
+            }
+
+            const stepData = currentPath[tokenIndex];
+            statusTextEl.innerHTML = "Calculating probabilities...";
+            
+            const displayItems = shuffleAndGetIndexes(stepData.text, stepData.alts, stepData.targetProb, stepData.altProbs);
+            let targetUIIndex = 0;
+
+            for (let i = 0; i < 5; i++) {
+                document.getElementById(`word-${i}`).innerText = displayItems[i].text.replace('<|stop|>', 'STOP');
+                document.getElementById(`bar-${i}`).style.width = `${displayItems[i].prob}%`;
+                document.getElementById(`percent-${i}`).innerText = `${displayItems[i].prob.toFixed(0)}%`;
+                if (displayItems[i].isTarget) targetUIIndex = i;
+            }
+
+            clearArrows();
+
+            let jumps = 0;
+            const maxJumps = 6;
+            activeJumpInterval = setInterval(() => {
+                if (stopRequested) {
+                    finishGenerationState('Generation stopped manually.');
+                    return;
+                }
+
+                clearArrows();
+                const randomIdx = Math.floor(Math.random() * 5);
+                document.getElementById(`arrow-${randomIdx}`).style.visibility = 'visible';
+                jumps++;
+
+                if (jumps >= maxJumps) {
+                    clearInterval(activeJumpInterval);
+                    activeJumpInterval = null;
+                    
+                    clearArrows();
+                    document.getElementById(`arrow-${targetUIIndex}`).style.visibility = 'visible';
+                    document.getElementById(`bar-${targetUIIndex}`).style.backgroundColor = '#4CAF50';
+                    document.getElementById(`word-${targetUIIndex}`).style.color = '#4CAF50';
+                    statusTextEl.innerHTML = `Sampled: "${stepData.text.trim()}"`;
+
+                    activeSampleDelayTimeout = setTimeout(() => {
+                        activeSampleDelayTimeout = null;
+                        if (stopRequested) {
+                            finishGenerationState('Generation stopped manually.');
+                            return;
+                        }
+
+                        const tokenDiv = document.createElement('div');
+                        tokenDiv.className = 'token';
+                        if (stepData.type === 'stop') {
+                            tokenDiv.classList.add('stop-token');
+                            statusTextEl.innerHTML = "<span class='tooltip' data-glossary='stoptoken' style='border-bottom:1px dotted #ff9999; color:#ff9999;'>Stop token<span class='tooltip-text' style='color:#fff;'>A special command injected by the engine that tells the AI it has finished its thought and must halt generation.</span></span> reached. Halting.";
+                            aiOutputEl.innerHTML = aiOutputEl.innerHTML.replace('<span class="cursor" id="cursor"></span>', '');
+                        } else {
+                            aiOutputEl.innerHTML = aiOutputEl.innerHTML.replace('<span class="cursor" id="cursor"></span>', '') + stepData.text + '<span class="cursor" id="cursor"></span>';
+                        }
+                        
+                        tokenDiv.innerText = stepData.text;
+                        tokenStreamEl.appendChild(tokenDiv);
+
+                        tokenIndex++;
+                        activeTokenDelayTimeout = setTimeout(() => {
+                            activeTokenDelayTimeout = null;
+                            processNextToken();
+                        }, getScaledDelay(400));
+
+                    }, getScaledDelay(300));
+                }
+            }, getScaledDelay(60));
+        }
+
+        processNextToken();
+    });
+
+    // --- Glossary System ---
+    const glossaryEntries = {
+        temperature: {
+            term: 'Temperature',
+            short: 'Temperature is a single number (typically 0 to 2) that you pass to the model as a setting. It mathematically reshapes the probability distribution over the next token before one is sampled.',
+            detail: '<strong>How it works:</strong> The model first computes raw scores ("logits") for every possible next word. Temperature divides those scores before converting them into probabilities via softmax.<br><br><strong>Low temp (e.g. 0.1):</strong> Dividing by a small number makes high scores much higher and low scores nearly zero — the model almost always picks the top word.<br><br><strong>High temp (e.g. 2.0):</strong> Dividing by a large number compresses the differences — even unlikely words get a real chance of being picked.<br><br><strong>In short:</strong> Temperature does not change <em>what</em> the model knows; it changes <em>how boldly</em> it picks from what it knows.'
+        },
+        token: {
+            term: 'Token',
+            short: 'A token is the smallest unit of text that an LLM reads and generates. Tokens can be whole words, parts of words, or punctuation.',
+            detail: '<strong>Examples:</strong> "hello" = 1 token, "unbelievable" might be split into "un" + "believ" + "able" = 3 tokens.<br><br>The model\'s entire vocabulary is a fixed list of tokens (typically 30k–100k entries). Generation works by predicting one token at a time, appending it, and repeating.'
+        },
+        probabilities: {
+            term: 'Probabilities',
+            short: 'Before producing the next token, the model assigns a probability (0%–100%) to every token in its vocabulary, representing how likely each one is to come next.',
+            detail: '<strong>Where they come from:</strong> The model\'s neural network outputs a raw score ("logit") for each vocabulary entry. A softmax function converts these scores into a proper probability distribution that sums to 100%.<br><br>Temperature is applied <em>before</em> softmax, which is how it reshapes these probabilities.'
+        },
+        stoptoken: {
+            term: 'Stop Token',
+            short: 'A stop token (e.g. <|stop|> or <|endoftext|>) is a special entry in the model\'s vocabulary that signals "I am done generating." The model learns during training when to predict it.',
+            detail: '<strong>Why it exists:</strong> Without a stop token, the model would generate text forever — it has no built-in sense of "enough." The stop token is trained into the model so it learns to predict it at natural endpoints (end of a sentence, end of an answer).<br><br><strong>How it works:</strong> At each step, the stop token competes with every other token in the probability distribution. When the model predicts it as the most likely next token, generation halts and the stop token is never shown to the user.'
+        }
+    };
+
+    function populateGlossary() {
+        const body = document.getElementById('glossaryBody');
+        body.innerHTML = '';
+        for (const key in glossaryEntries) {
+            const entry = glossaryEntries[key];
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'glossary-item';
+            itemDiv.id = 'glossary-' + key;
+            itemDiv.innerHTML = `
+                <div class="glossary-term" onclick="toggleGlossaryItem('${key}')">${entry.term}</div>
+                <div class="glossary-content" id="glossary-content-${key}">
+                    <div class="glossary-short">${entry.short}</div>
+                    <div class="glossary-detail">${entry.detail}</div>
+                </div>
+            `;
+            body.appendChild(itemDiv);
+        }
+    }
+
+    function toggleGlossaryItem(key) {
+        const item = document.getElementById('glossary-' + key);
+        if (item.classList.contains('expanded')) {
+            item.classList.remove('expanded');
+        } else {
+            item.classList.add('expanded');
+        }
+    }
+
+    function openGlossary(keyToScroll) {
+        document.getElementById('glossaryPanel').classList.add('open');
+        if (keyToScroll) {
+            setTimeout(() => {
+                const el = document.getElementById('glossary-' + keyToScroll);
+                if (el) {
+                    el.classList.add('expanded');
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 220);
+        }
+    }
+
+    function closeGlossary() {
+        document.getElementById('glossaryPanel').classList.remove('open');
+    }
+
+    // Global Click Listener for Tooltips and click-off logic
+    document.addEventListener('click', function(e) {
+        const tooltipBox = e.target.closest('.tooltip-text');
+        const glossaryPanel = document.getElementById('glossaryPanel');
+
+        // Only clicking the mini-definition bubble opens the glossary
+        if (tooltipBox) {
+            const tooltip = tooltipBox.closest('.tooltip[data-glossary]');
+            if (tooltip) {
+                e.preventDefault();
+                e.stopPropagation();
+                openGlossary(tooltip.getAttribute('data-glossary'));
+
+                const hintBanner = document.getElementById('hintBanner');
+                if (hintBanner) hintBanner.style.display = 'none';
+                return;
+            }
+        }
+
+        // Close glossary if clicking outside of it
+        if (glossaryPanel && glossaryPanel.classList.contains('open')) {
+            if (!e.target.closest('#glossaryPanel') && !e.target.closest('.glossary-btn')) {
+                closeGlossary();
+            }
+        }
+    });
+
+    // Init
+    populateGlossary();
+    resetUI();
+
+</script>
+
+</body>
+</html>

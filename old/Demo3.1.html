@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Generation: Temp + Stop Token</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            position: relative; /* For the hint banner */
+        }
+        
+        /* Hint Banner CSS */
+        .hint-banner {
+            position: absolute;
+            top: 20px;
+            background-color: #007acc;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: slideIn 0.5s ease forwards 0.5s, fadeOut 0.5s ease forwards 8s;
+        }
+        .close-hint {
+            cursor: pointer;
+            font-size: 16px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .close-hint:hover {
+            opacity: 1;
+        }
+        @keyframes slideIn {
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeOut {
+            100% { opacity: 0; visibility: hidden; }
+        }
+
+        /* Container & Main Layout */
+        .container {
+            background-color: #1e1e1e;
+            width: 900px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            overflow: visible; 
+        }
+        .header {
+            background-color: #2c2c2c;
+            padding: 15px 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            border-bottom: 1px solid #3c3c3c;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .radio-group {
+            display: flex;
+            gap: 10px;
+            font-size: 14px;
+        }
+        .radio-group label {
+            cursor: pointer;
+            padding: 4px 8px;
+            background-color: #333;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .radio-group label:hover {
+            background-color: #444;
+        }
+        .radio-group input:checked + span {
+            color: #00aaff;
+            font-weight: bold;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            color: #888;
+        }
+        .main-content {
+            display: flex;
+            height: 500px;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            background-color: #1e1e1e;
+        }
+        .left-panel {
+            flex: 6;
+            display: flex;
+            flex-direction: column;
+            border-right: 2px dashed #444;
+        }
+        .chat-ui {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+        .label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+        .bubble {
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 90%;
+            line-height: 1.4;
+            font-size: 14px;
+        }
+        .user-bubble {
+            background-color: #005c4b;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+        }
+        .ai-bubble {
+            background-color: #333333;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+        .engine-view {
+            padding: 15px;
+            background-color: #0a0a0a;
+            min-height: 120px;
+            border-top: 1px solid #333;
+            border-bottom-left-radius: 12px;
+        }
+        .token-stream {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+        }
+        .token {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            padding: 3px 6px;
+            border-radius: 4px;
+            animation: popIn 0.2s ease forwards;
+        }
+        .token.stop-token {
+            background-color: #660000;
+            border-color: #ff3333;
+            color: #ff9999;
+            font-weight: bold;
+        }
+        .right-panel {
+            flex: 4;
+            padding: 20px;
+            background-color: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            border-bottom-right-radius: 12px;
+        }
+        .prob-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            height: 24px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+        }
+        .arrow {
+            width: 20px;
+            color: #4CAF50;
+            font-weight: bold;
+            visibility: hidden;
+        }
+        .word {
+            width: 80px;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bar-container {
+            flex-grow: 1;
+            background-color: #333;
+            height: 100%;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            margin: 0 10px;
+        }
+        .bar {
+            background-color: #007acc;
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease, background-color 0.2s;
+        }
+        .percent {
+            width: 40px;
+            text-align: right;
+            color: #aaa;
+        }
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background-color: #fff;
+            vertical-align: middle;
+            margin-left: 2px;
+            animation: blink 1s step-end infinite;
+        }
+        
+        /* Tooltip CSS */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+            border-bottom: 1px dotted #aaa;
+        }
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 200px;
+            background-color: #2c2c2c;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 10;
+            bottom: 150%;
+            left: 50%;
+            margin-left: -112px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: normal;
+            text-transform: none;
+            letter-spacing: normal;
+            border: 1px solid #555;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+            pointer-events: none;
+        }
+        .tooltip .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #2c2c2c transparent transparent transparent;
+        }
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Glossary Sidebar */
+        .glossary-overlay {
+            position: fixed;
+            top: 0; right: 0; bottom: 0;
+            width: 340px;
+            background-color: #1a1a2e;
+            border-left: 2px solid #007acc;
+            box-shadow: -5px 0 25px rgba(0,0,0,0.7);
+            z-index: 200;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        .glossary-overlay.open {
+            transform: translateX(0);
+        }
+        .glossary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background-color: #007acc;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .glossary-close {
+            cursor: pointer;
+            font-size: 20px;
+            background: none;
+            border: none;
+            color: white;
+            padding: 0 4px;
+        }
+        .glossary-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .glossary-term {
+            color: #00aaff;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+        .glossary-short {
+            color: #ccc;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        .glossary-detail {
+            color: #aaa;
+            font-size: 13px;
+            line-height: 1.7;
+            border-top: 1px solid #333;
+            padding-top: 14px;
+        }
+        .glossary-detail strong {
+            color: #ddd;
+        }
+        .tooltip {
+            cursor: pointer;
+        }
+
+        /* Back Button */
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            background-color: #333;
+            color: #ccc;
+            border: 1px solid #555;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            transition: background-color 0.2s;
+            z-index: 50;
+        }
+        .back-btn:hover {
+            background-color: #444;
+            color: #fff;
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+<a href="index.html" class="back-btn">← Back</a>
+
+<div class="hint-banner" id="hintBanner">
+    💡 Hint: Hover or click dotted underlined words for definitions &amp; glossary! 
+    <span class="close-hint" onclick="document.getElementById('hintBanner').style.display='none'">✕</span>
+</div>
+
+<!-- Glossary Sidebar -->
+<div class="glossary-overlay" id="glossaryPanel">
+    <div class="glossary-header">
+        <span>📖 Glossary</span>
+        <button class="glossary-close" onclick="closeGlossary()">✕</button>
+    </div>
+    <div class="glossary-body">
+        <div class="glossary-term" id="glossaryTerm">Select a term</div>
+        <div class="glossary-short" id="glossaryShort">Click on any dotted-underlined word in the demo to see its full definition here.</div>
+        <div class="glossary-detail" id="glossaryDetail"></div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="header">
+        <div>Live Generation Engine</div>
+        <div class="controls">
+            <div class="radio-group">
+                <label>
+                    <input type="radio" name="temp" value="low" checked> 
+                    <span class="tooltip" data-glossary="temperature">Low Temp (0.1)
+                        <span class="tooltip-text">Temperature is a number (0–2) that controls randomness. At 0.1, the model is nearly deterministic — it almost always picks the highest-probability word.</span>
+                    </span>
+                </label>
+                <label>
+                    <input type="radio" name="temp" value="med"> 
+                    <span class="tooltip" data-glossary="temperature">Med Temp (1.0)
+                        <span class="tooltip-text">At the default temperature of 1.0, the probability distribution is unchanged — the model picks likely words most of the time but occasionally samples creative alternatives.</span>
+                    </span>
+                </label>
+                <label>
+                    <input type="radio" name="temp" value="high"> 
+                    <span class="tooltip" data-glossary="temperature">High Temp (2.0)
+                        <span class="tooltip-text">At 2.0, temperature flattens the probability curve — unlikely words become almost as probable as likely ones, producing chaotic or highly creative output.</span>
+                    </span>
+                </label>
+            </div>
+            <button id="generateBtn">Start Generation</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="left-panel">
+            <div class="chat-ui">
+                <div>
+                    <div class="label" style="text-align: right;">User</div>
+                    <div class="bubble user-bubble">
+                        I’m looking for a new Full-Size SUV with loads of room for family, with driver focused comfort features.
+                    </div>
+                </div>
+                <div>
+                    <div class="label">AI Assistant</div>
+                    <div class="bubble ai-bubble" id="aiOutput">Sure, there are several Stellantis vehicles that could fit those needs. One<span class="cursor" id="cursor"></span></div>
+                </div>
+            </div>
+            <div class="engine-view">
+                <div class="label">
+                    <span class="tooltip" data-glossary="token">Token Stream
+                        <span class="tooltip-text">A "token" is a piece of a word. LLMs don't think in sentences; they predict text one token at a time.</span>
+                    </span> (Engine Output)
+                </div>
+                <div class="token-stream" id="tokenStream"></div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="label" style="margin-bottom: 20px;">
+                Next Token <span class="tooltip" data-glossary="probabilities">Probabilities
+                    <span class="tooltip-text">Before generating the next token, the AI calculates the mathematical likelihood of every single known word based on its training.</span>
+                </span>
+            </div>
+            <div id="probList">
+                </div>
+            <div class="label" id="statusText" style="margin-top: auto; color: #888; font-style: italic; overflow: visible;">Ready...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const sequences = {
+        low: [
+            { text: " option", alts: [" popular", " vehicle", " choice", " good"], targetProb: 97, altProbs: [1, 1, 0.5, 0.5] },
+            { text: " for", alts: [" to", " is", " that", " with"], targetProb: 95, altProbs: [2, 1, 1, 1] },
+            { text: " a", alts: [" the", " your", " this", " an"], targetProb: 98, altProbs: [1, 0.5, 0.3, 0.2] },
+            { text: " full-size", alts: [" large", " big", " family", " great"], targetProb: 92, altProbs: [3, 2, 2, 1] },
+            { text: " SUV", alts: [" vehicle", " car", " truck", " option"], targetProb: 99, altProbs: [0.5, 0.2, 0.2, 0.1] },
+            { text: " is", alts: [" would", " could", " might", " includes"], targetProb: 96, altProbs: [2, 1, 0.5, 0.5] },
+            { text: " the", alts: [" a", " this", " one", " our"], targetProb: 98, altProbs: [1, 0.5, 0.3, 0.2] },
+            { text: " Jeep", alts: [" Dodge", " Chrysler", " Ram", " Fiat"], targetProb: 85, altProbs: [10, 3, 1, 1] },
+            { text: " Wagoneer.", alts: [" Cherokee.", " Durango.", " Pacifica.", " model."], targetProb: 95, altProbs: [2, 1, 1, 1] },
+            { text: "<|stop|>", type: "stop", alts: ["\n", " It", " The", " This"], targetProb: 99, altProbs: [0.5, 0.2, 0.2, 0.1] }
+        ],
+        med: [
+            { text: " solid", alts: [" option", " vehicle", " popular", " good"], targetProb: 25, altProbs: [45, 15, 10, 5] },
+            { text: " vehicle", alts: [" choice", " SUV", " pick", " option"], targetProb: 35, altProbs: [40, 15, 6, 4] },
+            { text: " to", alts: [" is", " for", " that", " with"], targetProb: 60, altProbs: [20, 10, 5, 5] },
+            { text: " consider", alts: [" buy", " look", " check", " test"], targetProb: 40, altProbs: [30, 15, 10, 5] },
+            { text: " is", alts: [" would", " might", " could", " includes"], targetProb: 80, altProbs: [10, 5, 3, 2] },
+            { text: " the", alts: [" a", " this", " our", " one"], targetProb: 85, altProbs: [8, 4, 2, 1] },
+            { text: " Dodge", alts: [" Jeep", " Chrysler", " Ram", " Fiat"], targetProb: 30, altProbs: [55, 10, 3, 2] },
+            { text: " Durango.", alts: [" Wagoneer.", " Cherokee.", " Hornet.", " Journey."], targetProb: 65, altProbs: [15, 10, 5, 5] },
+            { text: "<|stop|>", type: "stop", alts: ["\n", " It", " This", " With"], targetProb: 90, altProbs: [5, 3, 1, 1] }
+        ],
+        high: [
+            { text: " spicy", alts: [" option", " vehicle", " potato", " purple"], targetProb: 15, altProbs: [25, 22, 20, 18] },
+            { text: " meatball", alts: [" choice", " SUV", " car", " spaceship"], targetProb: 12, altProbs: [28, 25, 20, 15] },
+            { text: " that", alts: [" to", " is", " for", " runs"], targetProb: 18, altProbs: [24, 22, 19, 17] },
+            { text: " drives", alts: [" runs", " considers", " flies", " floats"], targetProb: 16, altProbs: [23, 22, 20, 19] },
+            { text: " sideways", alts: [" well", " fast", " backwards", " up"], targetProb: 14, altProbs: [25, 24, 19, 18] },
+            { text: " is", alts: [" the", " a", " might", " could"], targetProb: 20, altProbs: [25, 20, 18, 17] },
+            { text: " a", alts: [" the", " an", " some", " this"], targetProb: 22, altProbs: [24, 20, 18, 16] },
+            { text: " bicycle.", alts: [" Jeep.", " Durango.", " toaster.", " shoe."], targetProb: 11, altProbs: [26, 24, 20, 19] },
+            { text: "<|stop|>", type: "stop", alts: ["\n", " What", " You", " Oh"], targetProb: 80, altProbs: [8, 5, 4, 3] }
+        ]
+    };
+
+    const initialText = "Sure, there are several Stellantis vehicles that could fit those needs. One";
+    const aiOutputEl = document.getElementById('aiOutput');
+    const tokenStreamEl = document.getElementById('tokenStream');
+    const generateBtn = document.getElementById('generateBtn');
+    const probListEl = document.getElementById('probList');
+    const statusTextEl = document.getElementById('statusText');
+    const radios = document.getElementsByName('temp');
+
+    let isAnimating = false;
+
+    function initProbPanel() {
+        probListEl.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+            probListEl.innerHTML += `
+                <div class="prob-row">
+                    <div class="arrow" id="arrow-${i}">></div>
+                    <div class="word" id="word-${i}">---</div>
+                    <div class="bar-container">
+                        <div class="bar" id="bar-${i}"></div>
+                    </div>
+                    <div class="percent" id="percent-${i}">0%</div>
+                </div>
+            `;
+        }
+    }
+
+    function resetUI() {
+        tokenStreamEl.innerHTML = '';
+        aiOutputEl.innerHTML = initialText + '<span class="cursor" id="cursor"></span>';
+        initProbPanel();
+    }
+
+    function shuffleAndGetIndexes(targetText, alts, targetProb, altProbs) {
+        let items = [
+            { text: targetText, prob: targetProb, isTarget: true },
+            ...alts.map((alt, i) => ({ text: alt, prob: altProbs[i], isTarget: false }))
+        ];
+        items.sort((a, b) => b.prob - a.prob);
+        return items;
+    }
+
+    function clearArrows() {
+        for (let i = 0; i < 5; i++) {
+            document.getElementById(`arrow-${i}`).style.visibility = 'hidden';
+            document.getElementById(`bar-${i}`).style.backgroundColor = '#007acc';
+            document.getElementById(`word-${i}`).style.color = '#fff';
+        }
+    }
+
+    generateBtn.addEventListener('click', () => {
+        if (isAnimating) return;
+        isAnimating = true;
+        generateBtn.disabled = true;
+        for(let r of radios) r.disabled = true;
+
+        // Hide hint banner if it's still showing when they click generate
+        document.getElementById('hintBanner').style.display = 'none';
+
+        resetUI();
+
+        let selectedTemp = "low";
+        for (let r of radios) { if (r.checked) selectedTemp = r.value; }
+
+        const currentPath = sequences[selectedTemp];
+        let tokenIndex = 0;
+
+        function processNextToken() {
+            if (tokenIndex >= currentPath.length) {
+                isAnimating = false;
+                generateBtn.disabled = false;
+                for(let r of radios) r.disabled = false;
+                return;
+            }
+
+            const stepData = currentPath[tokenIndex];
+            statusTextEl.innerHTML = "Calculating probabilities...";
+            
+            const displayItems = shuffleAndGetIndexes(stepData.text, stepData.alts, stepData.targetProb, stepData.altProbs);
+            let targetUIIndex = 0;
+
+            for (let i = 0; i < 5; i++) {
+                document.getElementById(`word-${i}`).innerText = displayItems[i].text.replace('<|stop|>', 'STOP');
+                document.getElementById(`bar-${i}`).style.width = `${displayItems[i].prob}%`;
+                document.getElementById(`percent-${i}`).innerText = `${displayItems[i].prob.toFixed(0)}%`;
+                if (displayItems[i].isTarget) targetUIIndex = i;
+            }
+
+            clearArrows();
+
+            let jumps = 0;
+            const maxJumps = 6;
+            const jumpInterval = setInterval(() => {
+                clearArrows();
+                const randomIdx = Math.floor(Math.random() * 5);
+                document.getElementById(`arrow-${randomIdx}`).style.visibility = 'visible';
+                jumps++;
+
+                if (jumps >= maxJumps) {
+                    clearInterval(jumpInterval);
+                    
+                    clearArrows();
+                    document.getElementById(`arrow-${targetUIIndex}`).style.visibility = 'visible';
+                    document.getElementById(`bar-${targetUIIndex}`).style.backgroundColor = '#4CAF50';
+                    document.getElementById(`word-${targetUIIndex}`).style.color = '#4CAF50';
+                    statusTextEl.innerHTML = `Sampled: "${stepData.text.trim()}"`;
+
+                    setTimeout(() => {
+                        const tokenDiv = document.createElement('div');
+                        tokenDiv.className = 'token';
+                        if (stepData.type === 'stop') {
+                            tokenDiv.classList.add('stop-token');
+                            statusTextEl.innerHTML = "<span class='tooltip' data-glossary='stoptoken' style='border-bottom:1px dotted #ff9999; color:#ff9999;'>Stop token<span class='tooltip-text' style='color:#fff;'>A stop token is a special entry in the model's vocabulary (e.g. &lt;|stop|&gt;) that the model predicts when it decides its response is complete.</span></span> reached. Halting.";
+                            aiOutputEl.innerHTML = aiOutputEl.innerHTML.replace('<span class="cursor" id="cursor"></span>', '');
+                        } else {
+                            aiOutputEl.innerHTML = aiOutputEl.innerHTML.replace('<span class="cursor" id="cursor"></span>', '') + stepData.text + '<span class="cursor" id="cursor"></span>';
+                        }
+                        
+                        tokenDiv.innerText = stepData.text;
+                        tokenStreamEl.appendChild(tokenDiv);
+
+                        tokenIndex++;
+                        setTimeout(processNextToken, 400);
+
+                    }, 300);
+                }
+            }, 60);
+        }
+
+        processNextToken();
+    });
+
+    initProbPanel();
+
+    // --- Glossary System ---
+    const glossaryEntries = {
+        temperature: {
+            term: 'Temperature',
+            short: 'Temperature is a single number (typically 0 to 2) that you pass to the model as a setting. It mathematically reshapes the probability distribution over the next token before one is sampled.',
+            detail: '<strong>How it works:</strong> The model first computes raw scores ("logits") for every possible next word. Temperature divides those scores before converting them into probabilities via softmax.<br><br><strong>Low temp (e.g. 0.1):</strong> Dividing by a small number makes high scores much higher and low scores nearly zero — the model almost always picks the top word.<br><br><strong>High temp (e.g. 2.0):</strong> Dividing by a large number compresses the differences — even unlikely words get a real chance of being picked.<br><br><strong>In short:</strong> Temperature does not change <em>what</em> the model knows; it changes <em>how boldly</em> it picks from what it knows.'
+        },
+        token: {
+            term: 'Token',
+            short: 'A token is the smallest unit of text that an LLM reads and generates. Tokens can be whole words, parts of words, or punctuation.',
+            detail: '<strong>Examples:</strong> "hello" = 1 token, "unbelievable" might be split into "un" + "believ" + "able" = 3 tokens.<br><br>The model\'s entire vocabulary is a fixed list of tokens (typically 30k–100k entries). Generation works by predicting one token at a time, appending it, and repeating.'
+        },
+        probabilities: {
+            term: 'Probabilities',
+            short: 'Before producing the next token, the model assigns a probability (0%–100%) to every token in its vocabulary, representing how likely each one is to come next.',
+            detail: '<strong>Where they come from:</strong> The model\'s neural network outputs a raw score ("logit") for each vocabulary entry. A softmax function converts these scores into a proper probability distribution that sums to 100%.<br><br>Temperature is applied <em>before</em> softmax, which is how it reshapes these probabilities.'
+        },
+        stoptoken: {
+            term: 'Stop Token',
+            short: 'A stop token (e.g. <|stop|> or <|endoftext|>) is a special entry in the model\'s vocabulary that signals "I am done generating." The model learns during training when to predict it.',
+            detail: '<strong>Why it exists:</strong> Without a stop token, the model would generate text forever — it has no built-in sense of "enough." The stop token is trained into the model so it learns to predict it at natural endpoints (end of a sentence, end of an answer).<br><br><strong>How it works:</strong> At each step, the stop token competes with every other token in the probability distribution. When the model predicts it as the most likely next token, generation halts and the stop token is never shown to the user.'
+        }
+    };
+
+    function openGlossary(key) {
+        const entry = glossaryEntries[key];
+        if (!entry) return;
+        document.getElementById('glossaryTerm').textContent = entry.term;
+        document.getElementById('glossaryShort').textContent = entry.short;
+        document.getElementById('glossaryDetail').innerHTML = entry.detail;
+        document.getElementById('glossaryPanel').classList.add('open');
+    }
+
+    function closeGlossary() {
+        document.getElementById('glossaryPanel').classList.remove('open');
+    }
+
+    // Delegate click events for all tooltip elements (including dynamically created ones)
+    document.addEventListener('click', function(e) {
+        const tooltip = e.target.closest('.tooltip[data-glossary]');
+        if (tooltip) {
+            e.preventDefault();
+            openGlossary(tooltip.getAttribute('data-glossary'));
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -3,41 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LLM Stop Token Animation</title>
+    <title>LLM Temperature Demo</title>
     <style>
-        :root {
-            --bg-a: #081623;
-            --bg-b: #10263a;
-            --bg-c: #1a3950;
-            --line: rgba(132, 185, 219, 0.28);
-            --text: #edf7ff;
-            --muted: #acc5d8;
-            --accent: #1fa2ff;
-            --accent-hover: #3cc4ff;
-            --chip: #173149;
-        }
-
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            background:
-                radial-gradient(800px 500px at 10% -5%, rgba(31, 162, 255, 0.22), transparent 70%),
-                radial-gradient(900px 600px at 95% 8%, rgba(24, 192, 137, 0.16), transparent 72%),
-                linear-gradient(150deg, var(--bg-a), var(--bg-b) 45%, var(--bg-c));
-            color: var(--text);
+            background-color: #1e1e1e;
+            color: #d4d4d4;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
             position: relative;
-            overflow: hidden;
         }
 
         /* Hint Banner CSS */
         .hint-banner {
             position: absolute;
             top: 20px;
-            background: linear-gradient(120deg, rgba(23, 121, 182, 0.96), rgba(29, 163, 214, 0.96));
+            background-color: #007acc;
             color: white;
             padding: 10px 20px;
             border-radius: 30px;
@@ -73,178 +57,181 @@
             top: 20px;
             left: 20px;
             padding: 8px 16px;
-            background: rgba(17, 42, 64, 0.82);
-            color: #dff3ff;
-            border: 1px solid var(--line);
-            border-radius: 999px;
+            background-color: #333;
+            color: #ccc;
+            border: 1px solid #555;
+            border-radius: 6px;
             font-size: 14px;
             cursor: pointer;
             text-decoration: none;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            transition: background 0.2s, transform 0.2s ease, border-color 0.2s;
+            transition: background-color 0.2s;
             z-index: 50;
-            backdrop-filter: blur(8px);
         }
         .back-btn:hover {
-            transform: translateY(-1px);
-            background: rgba(22, 54, 82, 0.9);
-            border-color: rgba(159, 221, 255, 0.75);
+            background-color: #444;
+            color: #fff;
         }
+
         .glossary-btn {
             position: absolute;
             right: 20px;
             bottom: 20px;
             padding: 10px 16px;
-            background: linear-gradient(120deg, rgba(23, 121, 182, 0.92), rgba(29, 163, 214, 0.92));
+            background-color: #007acc;
             color: #fff;
-            border: 1px solid rgba(152, 218, 255, 0.55);
-            border-radius: 999px;
+            border: none;
+            border-radius: 6px;
             font-size: 14px;
             font-weight: bold;
             cursor: pointer;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            transition: background-color 0.2s;
             z-index: 120;
-            box-shadow: 0 10px 24px rgba(6, 30, 49, 0.38);
         }
         .glossary-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 14px 26px rgba(4, 25, 42, 0.46);
+            background-color: #0098ff;
         }
+
         .container {
-            background: linear-gradient(180deg, rgba(18, 34, 50, 0.95), rgba(10, 21, 33, 0.95));
-            border: 1px solid var(--line);
-            width: 600px;
-            border-radius: 18px;
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.42);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            background-color: #252526;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            width: 480px;
         }
-        .header {
-            background:
-                linear-gradient(110deg, rgba(31, 162, 255, 0.18), rgba(24, 192, 137, 0.1)),
-                rgba(15, 29, 44, 0.88);
-            padding: 15px 20px;
+        h2 {
+            margin-top: 0;
+            color: #fff;
             text-align: center;
-            font-weight: bold;
-            font-size: 18px;
-            border-bottom: 1px solid var(--line);
         }
-        .chat-ui {
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            border-bottom: 1px solid var(--line);
+        
+        .chat-context {
+            background-color: #1e1e1e;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+            font-size: 14px;
         }
         .label {
-            font-size: 12px;
-            color: var(--muted);
+            font-size: 11px;
+            color: #888;
             margin-bottom: 4px;
             text-transform: uppercase;
             letter-spacing: 1px;
             font-weight: bold;
         }
         .bubble {
-            padding: 12px 16px;
+            padding: 10px 14px;
             border-radius: 8px;
-            max-width: 85%;
+            margin-bottom: 10px;
             line-height: 1.4;
-            font-size: 14px;
         }
         .user-bubble {
-            background: linear-gradient(120deg, rgba(8, 102, 87, 0.93), rgba(18, 132, 109, 0.9));
-            align-self: flex-end;
+            background-color: #005c4b;
+            margin-left: 20px;
             border-bottom-right-radius: 0;
-            border: 1px solid rgba(124, 238, 206, 0.28);
         }
         .ai-bubble {
-            background: linear-gradient(120deg, rgba(36, 56, 79, 0.94), rgba(24, 40, 58, 0.94));
-            align-self: flex-start;
+            background-color: #333;
+            margin-right: 20px;
             border-bottom-left-radius: 0;
-            border: 1px solid rgba(149, 195, 225, 0.26);
         }
-        .engine-view {
-            padding: 20px;
-            background: rgba(11, 23, 36, 0.78);
-            flex-grow: 1;
-        }
-        .token-stream {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            min-height: 50px;
-            margin-bottom: 20px;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 13px;
-        }
-        .token {
-            background: var(--chip);
-            border: 1px solid rgba(110, 169, 202, 0.42);
-            padding: 4px 8px;
-            border-radius: 999px;
-            opacity: 0;
-            transform: translateY(10px);
-            transition: all 0.3s ease;
-            color: #d6ecfb;
-        }
-        .token.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        .token.stop-token {
-            background: rgba(98, 22, 22, 0.9);
-            border-color: rgba(255, 125, 125, 0.76);
-            color: #ffe3e3;
-            font-weight: bold;
-            box-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
-        }
-        .status {
-            font-size: 14px;
-            color: #b8d4e8;
-            height: 20px;
-            font-style: italic;
-        }
+
         .controls {
-            padding: 15px 20px;
-            background: rgba(16, 30, 47, 0.82);
+            margin-bottom: 20px;
+        }
+        .slider-container {
             display: flex;
-            justify-content: center;
-            border-top: 1px solid var(--line);
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
         }
-        button {
-            padding: 10px 24px;
-            background: linear-gradient(120deg, rgba(24, 139, 208, 0.96), rgba(32, 180, 242, 0.95));
-            color: white;
-            border: 1px solid rgba(170, 229, 255, 0.8);
-            border-radius: 999px;
-            font-size: 16px;
-            cursor: pointer;
+        input[type="range"] {
+            flex-grow: 1;
+            margin: 0 15px;
+        }
+        .options-list {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .option-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            position: relative;
+            height: 24px;
+        }
+        .arrow {
+            width: 20px;
+            color: #4CAF50;
             font-weight: bold;
+            visibility: hidden;
+        }
+        .word {
+            width: 90px;
+            font-weight: bold;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .bar-container {
+            flex-grow: 1;
+            background-color: #333;
+            height: 100%;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .bar {
+            background-color: #007acc;
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .percent {
+            width: 50px;
+            text-align: right;
+            font-weight: bold;
+            color: #fff;
+            margin-left: 10px;
+        }
+        button.action-btn {
+            width: 100%;
+            padding: 10px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            transition: transform 0.16s ease, box-shadow 0.16s ease;
+            font-weight: bold;
         }
-        button:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 10px 22px rgba(8, 51, 76, 0.42);
-        }
-        button:disabled {
+        button.action-btn:disabled {
             background-color: #555;
             cursor: not-allowed;
-            color: #888;
         }
-        .cursor {
-            display: inline-block;
-            width: 8px;
-            height: 16px;
-            background-color: #fff;
-            vertical-align: middle;
-            margin-left: 2px;
-            animation: blink 1s step-end infinite;
+        button.action-btn:hover:not(:disabled) {
+            background-color: #0098ff;
         }
-        @keyframes blink {
-            50% { opacity: 0; }
+        .history {
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .history-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .history-item {
+            background-color: #333;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #4CAF50;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
         }
 
         /* Tooltip CSS */
@@ -252,12 +239,12 @@
             position: relative;
             display: inline-block;
             cursor: pointer;
-            border-bottom: 1px dotted rgba(162, 217, 248, 0.9);
+            border-bottom: 1px dotted #aaa;
         }
         .tooltip .tooltip-text {
             visibility: hidden;
-            width: 200px;
-            background: rgba(17, 35, 55, 0.98);
+            width: 220px;
+            background-color: #2b2b2b;
             color: #fff;
             text-align: center;
             border-radius: 6px;
@@ -266,7 +253,7 @@
             z-index: 10;
             bottom: 150%;
             left: 50%;
-            margin-left: -112px;
+            margin-left: -122px;
             opacity: 0;
             transition: opacity 0.25s ease 1.5s, visibility 0s linear 1.75s;
             font-size: 12px;
@@ -274,7 +261,7 @@
             font-weight: normal;
             text-transform: none;
             letter-spacing: normal;
-            border: 1px solid rgba(127, 186, 224, 0.5);
+            border: 1px solid #595959;
             box-shadow: 0 5px 15px rgba(0,0,0,0.6);
             pointer-events: auto;
         }
@@ -286,8 +273,9 @@
             margin-left: -5px;
             border-width: 5px;
             border-style: solid;
-            border-color: rgba(17, 35, 55, 0.98) transparent transparent transparent;
+            border-color: #2c2c2c transparent transparent transparent;
         }
+        /* Show immediately on hover */
         .tooltip:hover .tooltip-text {
             visibility: visible;
             opacity: 1;
@@ -298,9 +286,9 @@
         .glossary-overlay {
             position: fixed;
             top: 0; right: 0; bottom: 0;
-            width: 340px;
-            background: rgba(13, 26, 42, 0.96);
-            border-left: 1px solid rgba(131, 190, 227, 0.45);
+            width: 380px;
+            background-color: #161d31;
+            border-left: 2px solid #007acc;
             box-shadow: -5px 0 25px rgba(0,0,0,0.7);
             z-index: 200;
             transform: translateX(100%);
@@ -317,7 +305,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 16px 20px;
-            background: linear-gradient(120deg, rgba(17, 120, 182, 0.94), rgba(20, 175, 140, 0.82));
+            background-color: #007acc;
             color: white;
             font-weight: bold;
             font-size: 16px;
@@ -338,14 +326,15 @@
             flex-direction: column;
             gap: 10px;
         }
+        
         .glossary-item {
             margin-bottom: 0;
-            background: rgba(27, 47, 73, 0.84);
-            border: 1px solid rgba(114, 168, 202, 0.35);
+            background: #1d2740;
+            border: 1px solid #304168;
             border-radius: 8px;
         }
         .glossary-term {
-            color: #9edfff;
+            color: #6fd1ff;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
@@ -357,7 +346,7 @@
         .glossary-term::after {
             content: '▾';
             font-size: 12px;
-            color: #c5def2;
+            color: #9eb1df;
             transition: transform 0.2s ease;
         }
         .glossary-item.expanded .glossary-term::after {
@@ -374,18 +363,18 @@
             padding: 0 10px 10px;
         }
         .glossary-short {
-            color: #d5e7f4;
+            color: #ddd;
             font-size: 13px;
             line-height: 1.5;
             margin-bottom: 6px;
         }
         .glossary-detail {
-            color: #a9c8e0;
+            color: #9eb1df;
             font-size: 12px;
-            line-height: 1.7;
+            line-height: 1.6;
         }
         .glossary-detail strong {
-            color: #d5e7f4;
+            color: #ddd;
         }
     </style>
 </head>
@@ -395,7 +384,7 @@
 <button class="glossary-btn" onclick="openGlossary()">📖 Glossary</button>
 
 <div class="hint-banner" id="hintBanner">
-    💡 Hint: Open glossary by clicking the mini-definition bubble or the Glossary button (bottom-right). 
+    💡 Hint: Open glossary by clicking the mini-definition bubble or the Glossary button (bottom-right).
     <span class="close-hint" onclick="document.getElementById('hintBanner').style.display='none'">✕</span>
 </div>
 
@@ -410,121 +399,168 @@
 </div>
 
 <div class="container">
-    <div class="header">
-        Stop-Token Demonstration
-    </div>
-
-    <div class="chat-ui">
-        <div>
-            <div class="label" style="text-align: right;">User</div>
-            <div class="bubble user-bubble">
-                I’m looking for a new Full-Size SUV with loads of room for family, with driver focused comfort features.
-            </div>
-        </div>
-        <div>
-            <div class="label">AI Assistant</div>
-            <div class="bubble ai-bubble" id="aiOutput">Sure, there are several Stellantis vehicles that could fit those needs. One<span class="cursor" id="cursor"></span></div>
-        </div>
-    </div>
-
-    <div class="engine-view">
-        <div class="label">Internal <span class="tooltip" data-glossary="token">Token Stream<span class="tooltip-text">A "token" is a piece of a word. LLMs don't think in sentences; they predict text one token at a time.</span></span> (Engine View)</div>
-        <div class="token-stream" id="tokenStream">
-            </div>
-        <div class="status" id="statusText">Awaiting generation...</div>
+    <h2>Token Sampling Demo</h2>
+    
+    <div class="chat-context">
+        <div class="label">User</div>
+        <div class="bubble user-bubble">I am looking for a reliable SUV.</div>
+        <div class="label">AI Assistant</div>
+        <div class="bubble ai-bubble" id="aiAssistantBubble">The Jeep Grand Cherokee is a great <span style="display:inline-block; width:10px; height:2px; background:#fff; vertical-align:bottom; animation: blink 1s infinite;"></span></div>
     </div>
 
     <div class="controls">
-        <button id="generateBtn">Resume Generation</button>
+        <div class="slider-container">
+            <label for="tempSlider">
+                <span class="tooltip" data-glossary="temperature">Temperature
+                    <span class="tooltip-text">Temperature is a number (0–2) that controls randomness by reshaping the probability distribution before sampling.</span>
+                </span>:
+            </label>
+            <input type="range" id="tempSlider" min="0" max="2" step="0.1" value="1.0">
+            <span id="tempValue">1.0</span>
+        </div>
+    </div>
+
+    <div class="options-list" id="optionsList">
+        </div>
+
+    <button id="generateBtn" class="action-btn">Generate <span class="tooltip" data-glossary="token" style="border-bottom-color:#fff;">Token<span class="tooltip-text">A token is the smallest unit of text an LLM reads and generates — it can be a whole word, part of a word, or punctuation.</span></span></button>
+
+    <div class="history">
+        <div><strong>Generation History:</strong></div>
+        <div class="history-list" id="historyList"></div>
     </div>
 </div>
 
 <script>
-    const aiOutputEl = document.getElementById('aiOutput');
-    const tokenStreamEl = document.getElementById('tokenStream');
-    const generateBtn = document.getElementById('generateBtn');
-    const statusTextEl = document.getElementById('statusText');
-    const cursorEl = document.getElementById('cursor');
-
-    const initialText = "Sure, there are several Stellantis vehicles that could fit those needs. One";
-    
-    const tokensToGenerate = [
-        { text: " option", type: "text" },
-        { text: " for", type: "text" },
-        { text: " a", type: "text" },
-        { text: " full-size", type: "text" },
-        { text: " SUV", type: "text" },
-        { text: " is", type: "text" },
-        { text: " the", type: "text" },
-        { text: " Jeep", type: "text" },
-        { text: " Grand", type: "text" },
-        { text: " Wagoneer,", type: "text" },
-        { text: " with", type: "text" },
-        { text: " 3", type: "text" },
-        { text: " rows", type: "text" },
-        { text: " of", type: "text" },
-        { text: " seating", type: "text" },
-        { text: " for", type: "text" },
-        { text: " the", type: "text" },
-        { text: " whole", type: "text" },
-        { text: " family.", type: "text" },
-        { text: "<|stop|>", type: "stop" }
+    const baseData = [
+        { word: " choice", prob: 0.42 },
+        { word: " vehicle", prob: 0.21 },
+        { word: " option", prob: 0.16 },
+        { word: " car", prob: 0.09 },
+        { word: " investment", prob: 0.07 },
+        { word: " example", prob: 0.03 },
+        { word: " buy", prob: 0.01 }
     ];
 
+    let currentProbs = [];
     let isAnimating = false;
 
-    function resetAnimation() {
-        tokenStreamEl.innerHTML = '';
-        aiOutputEl.innerHTML = initialText + '<span class="cursor" id="cursor"></span>';
-        statusTextEl.innerText = "Generating tokens sequentially...";
-        statusTextEl.style.color = "#aaa";
+    const optionsListEl = document.getElementById('optionsList');
+    const tempSlider = document.getElementById('tempSlider');
+    const tempValue = document.getElementById('tempValue');
+    const generateBtn = document.getElementById('generateBtn');
+    const historyList = document.getElementById('historyList');
+    const aiAssistantBubble = document.getElementById('aiAssistantBubble');
+    const aiStarterText = 'The Jeep Grand Cherokee is a great';
+
+    function init() {
+        baseData.forEach((item, index) => {
+            const row = document.createElement('div');
+            row.className = 'option-row';
+            row.innerHTML = `
+                <div class="arrow" id="arrow-${index}">></div>
+                <div class="word">${item.word}</div>
+                <div class="bar-container">
+                    <div class="bar" id="bar-${index}"></div>
+                </div>
+                <div class="percent" id="percent-${index}">0%</div>
+            `;
+            optionsListEl.appendChild(row);
+        });
+        updateProbabilities();
+        populateGlossary();
+    }
+
+    function updateProbabilities() {
+        const temp = parseFloat(tempSlider.value);
+        tempValue.innerText = temp.toFixed(1);
+
+        if (temp === 0) {
+            let maxIndex = 0;
+            for (let i = 1; i < baseData.length; i++) {
+                if (baseData[i].prob > baseData[maxIndex].prob) maxIndex = i;
+            }
+            currentProbs = baseData.map((_, i) => i === maxIndex ? 1 : 0);
+        } else {
+            const adjusted = baseData.map(item => Math.pow(item.prob, 1 / temp));
+            const sum = adjusted.reduce((a, b) => a + b, 0);
+            currentProbs = adjusted.map(p => p / sum);
+        }
+
+        currentProbs.forEach((prob, index) => {
+            const percent = (prob * 100).toFixed(0);
+            document.getElementById(`bar-${index}`).style.width = `${percent}%`;
+            document.getElementById(`percent-${index}`).innerText = `${percent}%`;
+        });
+    }
+
+    function weightedRandom(probs) {
+        const r = Math.random();
+        let sum = 0;
+        for (let i = 0; i < probs.length; i++) {
+            sum += probs[i];
+            if (r <= sum) return i;
+        }
+        return probs.length - 1;
+    }
+
+    function clearArrows() {
+        for (let i = 0; i < baseData.length; i++) {
+            document.getElementById(`arrow-${i}`).style.visibility = 'hidden';
+            document.getElementById(`bar-${i}`).style.backgroundColor = '#007acc';
+        }
+    }
+
+    function showArrow(index) {
+        clearArrows();
+        document.getElementById(`arrow-${index}`).style.visibility = 'visible';
+        document.getElementById(`bar-${index}`).style.backgroundColor = '#4CAF50';
     }
 
     generateBtn.addEventListener('click', () => {
         if (isAnimating) return;
         isAnimating = true;
         generateBtn.disabled = true;
-        resetAnimation();
-        
-        const hintBanner = document.getElementById('hintBanner');
-        if(hintBanner) hintBanner.style.display = 'none';
+        tempSlider.disabled = true;
+        aiAssistantBubble.innerHTML = `${aiStarterText} <span style="display:inline-block; width:10px; height:2px; background:#fff; vertical-align:bottom; animation: blink 1s infinite;"></span>`;
 
-        let currentIndex = 0;
+        let jumps = 0;
+        const maxJumps = 20;
+        const intervalTime = 75; 
 
-        const interval = setInterval(() => {
-            const currentToken = tokensToGenerate[currentIndex];
+        const jumpInterval = setInterval(() => {
+            const randomIndex = Math.floor(Math.random() * baseData.length);
+            showArrow(randomIndex);
+            jumps++;
 
-            const tokenDiv = document.createElement('div');
-            tokenDiv.className = 'token';
-            if (currentToken.type === 'stop') {
-                tokenDiv.classList.add('stop-token');
+            if (jumps >= maxJumps) {
+                clearInterval(jumpInterval);
+                finishGeneration();
             }
-            tokenDiv.innerText = currentToken.text;
-            tokenStreamEl.appendChild(tokenDiv);
-
-            void tokenDiv.offsetWidth;
-            tokenDiv.classList.add('visible');
-
-            if (currentToken.type === 'text') {
-                const currentHtml = aiOutputEl.innerHTML;
-                aiOutputEl.innerHTML = currentHtml.replace('<span class="cursor" id="cursor"></span>', '') + currentToken.text + '<span class="cursor" id="cursor"></span>';
-            } else if (currentToken.type === 'stop') {
-                clearInterval(interval);
-                statusTextEl.innerHTML = "<span class='tooltip' data-glossary='stoptoken' style='border-bottom:1px dotted #ff9999; color:#ff9999;'>Stop token<span class='tooltip-text' style='color:#fff;'>A special command injected by the engine that tells the AI it has finished its thought and must halt generation.</span></span> reached. Halting.";
-                
-                const finalHtml = aiOutputEl.innerHTML;
-                aiOutputEl.innerHTML = finalHtml.replace('<span class="cursor" id="cursor"></span>', '');
-
-                setTimeout(() => {
-                    isAnimating = false;
-                    generateBtn.innerText = "Replay Animation";
-                    generateBtn.disabled = false;
-                }, 1000);
-            }
-
-            currentIndex++;
-        }, 250);
+        }, intervalTime);
     });
+
+    function finishGeneration() {
+        const selectedIndex = weightedRandom(currentProbs);
+        showArrow(selectedIndex);
+        const selectedWord = baseData[selectedIndex].word;
+        aiAssistantBubble.innerHTML = `${aiStarterText}${selectedWord} <span style="display:inline-block; width:10px; height:2px; background:#fff; vertical-align:bottom; animation: blink 1s infinite;"></span>`;
+
+        const historyItem = document.createElement('div');
+        historyItem.className = 'history-item';
+        historyItem.innerText = selectedWord;
+        historyList.appendChild(historyItem);
+
+        if (historyList.children.length > 8) {
+            historyList.removeChild(historyList.firstChild);
+        }
+
+        isAnimating = false;
+        generateBtn.disabled = false;
+        tempSlider.disabled = false;
+    }
+
+    tempSlider.addEventListener('input', updateProbabilities);
 
     // --- Glossary System ---
     const glossaryEntries = {
@@ -597,16 +633,17 @@
 
     // Global Click Listener for Tooltips and click-off logic
     document.addEventListener('click', function(e) {
-        const tooltipText = e.target.closest('.tooltip-text');
+        const tooltipBox = e.target.closest('.tooltip-text');
         const glossaryPanel = document.getElementById('glossaryPanel');
 
-        if (tooltipText) {
-            const tooltip = tooltipText.closest('.tooltip[data-glossary]');
+        // Only clicking the mini-definition bubble opens the glossary
+        if (tooltipBox) {
+            const tooltip = tooltipBox.closest('.tooltip[data-glossary]');
             if (tooltip) {
                 e.preventDefault();
                 e.stopPropagation();
                 openGlossary(tooltip.getAttribute('data-glossary'));
-                
+
                 const hintBanner = document.getElementById('hintBanner');
                 if (hintBanner) hintBanner.style.display = 'none';
                 return;
@@ -621,8 +658,9 @@
         }
     });
 
-    // Init glossary list
-    populateGlossary();
+    // Initialize
+    init();
+
 </script>
 
 </body>

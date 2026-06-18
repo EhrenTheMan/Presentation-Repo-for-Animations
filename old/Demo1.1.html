@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Temperature Demo</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            position: relative;
+        }
+
+        /* Hint Banner CSS */
+        .hint-banner {
+            position: absolute;
+            top: 20px;
+            background-color: #007acc;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: slideIn 0.5s ease forwards 0.5s, fadeOut 0.5s ease forwards 8s;
+        }
+        .close-hint {
+            cursor: pointer;
+            font-size: 16px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .close-hint:hover {
+            opacity: 1;
+        }
+        @keyframes slideIn {
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeOut {
+            100% { opacity: 0; visibility: hidden; }
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            background-color: #333;
+            color: #ccc;
+            border: 1px solid #555;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            transition: background-color 0.2s;
+            z-index: 50;
+        }
+        .back-btn:hover {
+            background-color: #444;
+            color: #fff;
+        }
+        .container {
+            background-color: #252526;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            width: 400px;
+        }
+        h2 {
+            margin-top: 0;
+            color: #fff;
+            text-align: center;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        input[type="range"] {
+            flex-grow: 1;
+            margin: 0 15px;
+        }
+        .options-list {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .option-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            position: relative;
+            height: 24px;
+        }
+        .arrow {
+            width: 20px;
+            color: #4CAF50;
+            font-weight: bold;
+            visibility: hidden;
+        }
+        .word {
+            width: 80px;
+            font-weight: bold;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .bar-container {
+            flex-grow: 1;
+            background-color: #333;
+            height: 100%;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .bar {
+            background-color: #007acc;
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .percent {
+            width: 50px;
+            text-align: right;
+            font-weight: bold;
+            color: #fff;
+            margin-left: 10px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: bold;
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) {
+            background-color: #0098ff;
+        }
+        .history {
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .history-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .history-item {
+            background-color: #333;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #4CAF50;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+        }
+
+        /* Tooltip CSS */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            border-bottom: 1px dotted #aaa;
+        }
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 200px;
+            background-color: #2c2c2c;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 10;
+            bottom: 150%;
+            left: 50%;
+            margin-left: -112px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: normal;
+            text-transform: none;
+            letter-spacing: normal;
+            border: 1px solid #555;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+            pointer-events: none;
+        }
+        .tooltip .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #2c2c2c transparent transparent transparent;
+        }
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Glossary Sidebar */
+        .glossary-overlay {
+            position: fixed;
+            top: 0; right: 0; bottom: 0;
+            width: 340px;
+            background-color: #1a1a2e;
+            border-left: 2px solid #007acc;
+            box-shadow: -5px 0 25px rgba(0,0,0,0.7);
+            z-index: 200;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        .glossary-overlay.open {
+            transform: translateX(0);
+        }
+        .glossary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background-color: #007acc;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .glossary-close {
+            cursor: pointer;
+            font-size: 20px;
+            background: none;
+            border: none;
+            color: white;
+            padding: 0 4px;
+        }
+        .glossary-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .glossary-term {
+            color: #00aaff;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+        .glossary-short {
+            color: #ccc;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        .glossary-detail {
+            color: #aaa;
+            font-size: 13px;
+            line-height: 1.7;
+            border-top: 1px solid #333;
+            padding-top: 14px;
+        }
+        .glossary-detail strong {
+            color: #ddd;
+        }
+    </style>
+</head>
+<body>
+
+<a href="index.html" class="back-btn">← Back</a>
+
+<div class="hint-banner" id="hintBanner">
+    💡 Hint: Hover or click dotted underlined words for definitions &amp; glossary!
+    <span class="close-hint" onclick="document.getElementById('hintBanner').style.display='none'">✕</span>
+</div>
+
+<!-- Glossary Sidebar -->
+<div class="glossary-overlay" id="glossaryPanel">
+    <div class="glossary-header">
+        <span>📖 Glossary</span>
+        <button class="glossary-close" onclick="closeGlossary()">✕</button>
+    </div>
+    <div class="glossary-body">
+        <div class="glossary-term" id="glossaryTerm">Select a term</div>
+        <div class="glossary-short" id="glossaryShort">Click on any dotted-underlined word in the demo to see its full definition here.</div>
+        <div class="glossary-detail" id="glossaryDetail"></div>
+    </div>
+</div>
+
+<div class="container">
+    <h2>Token Sampling Demo</h2>
+    
+    <div class="controls">
+        <div class="slider-container">
+            <label for="tempSlider">
+                <span class="tooltip" data-glossary="temperature">Temperature
+                    <span class="tooltip-text">Temperature is a number (0–2) that controls randomness by reshaping the probability distribution before sampling.</span>
+                </span>:
+            </label>
+            <input type="range" id="tempSlider" min="0" max="2" step="0.1" value="1.0">
+            <span id="tempValue">1.0</span>
+        </div>
+    </div>
+
+    <div class="options-list" id="optionsList">
+        <!-- Rows generated by JS -->
+    </div>
+
+    <button id="generateBtn">Generate Next <span class="tooltip" data-glossary="token" style="border-bottom-color:#fff;">Token<span class="tooltip-text">A token is the smallest unit of text an LLM reads and generates — it can be a whole word, part of a word, or punctuation.</span></span></button>
+
+    <div class="history">
+        <div><strong>Selection History:</strong></div>
+        <div class="history-list" id="historyList"></div>
+    </div>
+</div>
+
+<script>
+    const baseData = [
+        { word: "option", prob: 0.42 },
+        { word: "popular", prob: 0.21 },
+        { word: "vehicle", prob: 0.16 },
+        { word: "good", prob: 0.09 },
+        { word: "choice", prob: 0.07 },
+        { word: "example", prob: 0.03 },
+        { word: "thing", prob: 0.01 }
+    ];
+
+    let currentProbs = [];
+    let isAnimating = false;
+
+    const optionsListEl = document.getElementById('optionsList');
+    const tempSlider = document.getElementById('tempSlider');
+    const tempValue = document.getElementById('tempValue');
+    const generateBtn = document.getElementById('generateBtn');
+    const historyList = document.getElementById('historyList');
+
+    function init() {
+        baseData.forEach((item, index) => {
+            const row = document.createElement('div');
+            row.className = 'option-row';
+            row.innerHTML = `
+                <div class="arrow" id="arrow-${index}">></div>
+                <div class="word">${item.word}</div>
+                <div class="bar-container">
+                    <div class="bar" id="bar-${index}"></div>
+                </div>
+                <div class="percent" id="percent-${index}">0%</div>
+            `;
+            optionsListEl.appendChild(row);
+        });
+        updateProbabilities();
+    }
+
+    function updateProbabilities() {
+        const temp = parseFloat(tempSlider.value);
+        tempValue.innerText = temp.toFixed(1);
+
+        if (temp === 0) {
+            let maxIndex = 0;
+            for (let i = 1; i < baseData.length; i++) {
+                if (baseData[i].prob > baseData[maxIndex].prob) maxIndex = i;
+            }
+            currentProbs = baseData.map((_, i) => i === maxIndex ? 1 : 0);
+        } else {
+            const adjusted = baseData.map(item => Math.pow(item.prob, 1 / temp));
+            const sum = adjusted.reduce((a, b) => a + b, 0);
+            currentProbs = adjusted.map(p => p / sum);
+        }
+
+        currentProbs.forEach((prob, index) => {
+            const percent = (prob * 100).toFixed(0);
+            document.getElementById(`bar-${index}`).style.width = `${percent}%`;
+            document.getElementById(`percent-${index}`).innerText = `${percent}%`;
+        });
+    }
+
+    function weightedRandom(probs) {
+        const r = Math.random();
+        let sum = 0;
+        for (let i = 0; i < probs.length; i++) {
+            sum += probs[i];
+            if (r <= sum) return i;
+        }
+        return probs.length - 1;
+    }
+
+    function clearArrows() {
+        for (let i = 0; i < baseData.length; i++) {
+            document.getElementById(`arrow-${i}`).style.visibility = 'hidden';
+            document.getElementById(`bar-${i}`).style.backgroundColor = '#007acc';
+        }
+    }
+
+    function showArrow(index) {
+        clearArrows();
+        document.getElementById(`arrow-${index}`).style.visibility = 'visible';
+        document.getElementById(`bar-${index}`).style.backgroundColor = '#4CAF50';
+    }
+
+    generateBtn.addEventListener('click', () => {
+        if (isAnimating) return;
+        isAnimating = true;
+        generateBtn.disabled = true;
+        tempSlider.disabled = true;
+
+        let jumps = 0;
+        const maxJumps = 20;
+        const intervalTime = 75; 
+
+        const jumpInterval = setInterval(() => {
+            const randomIndex = Math.floor(Math.random() * baseData.length);
+            showArrow(randomIndex);
+            jumps++;
+
+            if (jumps >= maxJumps) {
+                clearInterval(jumpInterval);
+                finishGeneration();
+            }
+        }, intervalTime);
+    });
+
+    function finishGeneration() {
+        const selectedIndex = weightedRandom(currentProbs);
+        showArrow(selectedIndex);
+
+        // Add to history
+        const historyItem = document.createElement('div');
+        historyItem.className = 'history-item';
+        historyItem.innerText = baseData[selectedIndex].word;
+        historyList.appendChild(historyItem);
+
+        if (historyList.children.length > 8) {
+            historyList.removeChild(historyList.firstChild);
+        }
+
+        isAnimating = false;
+        generateBtn.disabled = false;
+        tempSlider.disabled = false;
+    }
+
+    tempSlider.addEventListener('input', updateProbabilities);
+
+    // Initialize
+    init();
+
+    // --- Glossary System ---
+    const glossaryEntries = {
+        temperature: {
+            term: 'Temperature',
+            short: 'Temperature is a single number (typically 0 to 2) that you pass to the model as a setting. It mathematically reshapes the probability distribution over the next token before one is sampled.',
+            detail: '<strong>How it works:</strong> The model first computes raw scores ("logits") for every possible next word. Temperature divides those scores before converting them into probabilities via softmax.<br><br><strong>Low temp (e.g. 0.1):</strong> Dividing by a small number makes high scores much higher and low scores nearly zero — the model almost always picks the top word.<br><br><strong>High temp (e.g. 2.0):</strong> Dividing by a large number compresses the differences — even unlikely words get a real chance of being picked.<br><br><strong>In short:</strong> Temperature does not change <em>what</em> the model knows; it changes <em>how boldly</em> it picks from what it knows.'
+        },
+        token: {
+            term: 'Token',
+            short: 'A token is the smallest unit of text that an LLM reads and generates. Tokens can be whole words, parts of words, or punctuation.',
+            detail: '<strong>Examples:</strong> "hello" = 1 token, "unbelievable" might be split into "un" + "believ" + "able" = 3 tokens.<br><br>The model\'s entire vocabulary is a fixed list of tokens (typically 30k–100k entries). Generation works by predicting one token at a time, appending it, and repeating.'
+        },
+        probabilities: {
+            term: 'Probabilities',
+            short: 'Before producing the next token, the model assigns a probability (0%–100%) to every token in its vocabulary, representing how likely each one is to come next.',
+            detail: '<strong>Where they come from:</strong> The model\'s neural network outputs a raw score ("logit") for each vocabulary entry. A softmax function converts these scores into a proper probability distribution that sums to 100%.<br><br>Temperature is applied <em>before</em> softmax, which is how it reshapes these probabilities.'
+        }
+    };
+
+    function openGlossary(key) {
+        const entry = glossaryEntries[key];
+        if (!entry) return;
+        document.getElementById('glossaryTerm').textContent = entry.term;
+        document.getElementById('glossaryShort').textContent = entry.short;
+        document.getElementById('glossaryDetail').innerHTML = entry.detail;
+        document.getElementById('glossaryPanel').classList.add('open');
+    }
+
+    function closeGlossary() {
+        document.getElementById('glossaryPanel').classList.remove('open');
+    }
+
+    document.addEventListener('click', function(e) {
+        const tooltip = e.target.closest('.tooltip[data-glossary]');
+        if (tooltip) {
+            e.preventDefault();
+            openGlossary(tooltip.getAttribute('data-glossary'));
+        }
+    });
+</script>
+
+</body>
+</html>
