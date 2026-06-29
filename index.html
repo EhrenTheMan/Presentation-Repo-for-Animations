@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LLM Animations Showcase</title>
+    <title>unlocking the 'ai blackbox'</title>
     <style>
         :root {
             --bg-a: #081623;
@@ -90,18 +90,76 @@
             color: #d5ecff;
             text-decoration: underline;
         }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+            .container {
+                padding: 28px 20px;
+                border-radius: 16px;
+                max-width: 100%;
+            }
+            h1 {
+                font-size: 24px;
+                margin-bottom: 8px;
+            }
+            p {
+                font-size: 14px;
+                margin-bottom: 24px;
+            }
+            .btn {
+                padding: 14px 16px;
+                font-size: 16px;
+                min-height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .nav-links {
+                gap: 12px;
+            }
+            .github-link {
+                font-size: 12px;
+                margin-top: 24px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 12px;
+            }
+            .container {
+                padding: 20px 16px;
+            }
+            h1 {
+                font-size: 20px;
+            }
+            p {
+                font-size: 13px;
+                margin-bottom: 20px;
+            }
+            .btn {
+                padding: 12px 14px;
+                font-size: 14px;
+                border-radius: 10px;
+            }
+            .nav-links {
+                gap: 10px;
+            }
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>LLM Animations</h1>
-        <p>Welcome! Choose an interactive demonstration below to see how Large Language Models generate text behind the scenes.</p>
+        <h1>Unlocking the 'AI Blackbox'</h1>
+        <p>Are you attending the live presentation walkthrough, or exploring this on your own?</p>
         
         <div class="nav-links">
-            <a href="Demo1.html" class="btn">Demo 1: Temperature & Sampling</a>
-            <a href="Demo2.html" class="btn">Demo 2: The Stop-Token</a>
-            <a href="Demo3.html" class="btn">Demo 3: Full AI Thinking Walkthrough</a>
+            <a href="Demo3.html" class="btn">📺 I'm watching the presentation</a>
+            <a href="Demo3.html?guided=true" class="btn">🎓 I'm doing this on my own time</a>
         </div>
 
         <a href="https://github.com/ehrentheman/Presentation-Repo-for-Animations" class="github-link" target="_blank">

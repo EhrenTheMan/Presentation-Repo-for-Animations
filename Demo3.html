@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Demo 3: Learn Each LLM Step</title>
+  <title>Unlocking the 'AI Blackbox'</title>
   <style>
     :root {
       --bg-a: #081623;
@@ -327,6 +327,8 @@
       border: 1px solid rgba(106, 163, 198, 0.46);
       border-radius: 8px;
       font-family: inherit;
+      max-width: 100%;
+      box-sizing: border-box;
       transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, transform 0.18s ease;
     }
     select, button {
@@ -372,6 +374,7 @@
     .meta {
       margin-top: 8px;
       display: flex;
+      flex-wrap: wrap;
       gap: 16px;
       color: #9cb9cf;
       font-size: 12px;
@@ -459,6 +462,8 @@
       line-height: 1.5;
       font-size: 14px;
       border: 1px solid transparent;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .user {
       background: linear-gradient(120deg, rgba(8, 102, 87, 0.93), rgba(18, 132, 109, 0.9));
@@ -635,6 +640,143 @@
     .g-short { color: #d5e7f4; font-size: 13px; margin-bottom: 6px; line-height: 1.45; }
     .g-detail { color: #a9c8e0; font-size: 12px; line-height: 1.58; }
 
+    .guide-box {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(800px, calc(100vw - 40px));
+      background: linear-gradient(180deg, rgba(18, 34, 50, 0.98), rgba(12, 24, 37, 0.98));
+      border: 1px solid rgba(132, 185, 219, 0.36);
+      border-radius: 14px;
+      padding: 16px 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      z-index: 250;
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: slideUp 0.3s ease;
+    }
+    .guide-box.hidden {
+      display: none;
+    }
+    .guide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .guide-header-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .guide-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.01em;
+    }
+    .guide-close {
+      background: none;
+      border: none;
+      color: #9cb9cf;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0;
+      transition: color 0.18s ease, transform 0.16s ease;
+      flex-shrink: 0;
+    }
+    .guide-minimize {
+      background: rgba(21, 42, 64, 0.95);
+      border: 1px solid rgba(106, 163, 198, 0.46);
+      color: #d5ecff;
+      font-size: 16px;
+      line-height: 1;
+      min-width: 28px;
+      min-height: 28px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      transition: border-color 0.18s ease, background 0.18s ease, transform 0.14s ease;
+    }
+    .guide-minimize:hover {
+      border-color: rgba(193, 230, 250, 0.7);
+      background: rgba(28, 55, 84, 0.95);
+      transform: translateY(-1px);
+    }
+    .guide-close:hover {
+      color: #d5ecff;
+      transform: scale(1.1);
+    }
+    .guide-content {
+      color: #d5e7f4;
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 0;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+    .guide-content strong {
+      color: #fff;
+    }
+    .guide-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+    .guide-box.minimized .guide-content,
+    .guide-box.minimized .guide-actions {
+      display: none;
+    }
+    .guide-box.minimized {
+      width: min(420px, calc(100vw - 40px));
+      gap: 0;
+    }
+    .guide-btn {
+      padding: 7px 12px;
+      border: 1px solid rgba(106, 163, 198, 0.46);
+      border-radius: 8px;
+      background: rgba(21, 42, 64, 0.92);
+      color: #ecf6ff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+    }
+    .guide-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(193, 230, 250, 0.7);
+      background: rgba(28, 55, 84, 0.95);
+    }
+    .guide-btn.primary {
+      background: linear-gradient(120deg, rgba(24, 139, 208, 0.96), rgba(32, 180, 242, 0.95));
+      border-color: rgba(170, 229, 255, 0.8);
+      color: #f6fdff;
+    }
+    .guide-btn.primary:hover {
+      background: linear-gradient(120deg, rgba(33, 157, 232, 0.98), rgba(60, 199, 255, 0.98));
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
     @keyframes stageFade {
       from {
         opacity: 0;
@@ -660,6 +802,7 @@
         top: 12px;
         left: 12px;
         padding: 8px 13px;
+        font-size: 14px;
       }
       .theme-dock {
         top: 12px;
@@ -668,12 +811,341 @@
       .glossary-btn {
         right: 12px;
         bottom: 12px;
+        font-size: 16px;
+        padding: 10px 12px;
       }
       .shell { margin-top: 44px; border-radius: 16px; }
       .head { padding: 18px 15px 15px; }
+      .head h1 { font-size: 20px; }
+      .head p { font-size: 13px; }
       .body { padding: 12px; }
       .stage.active.two-col { grid-template-columns: 1fr; }
       .row { grid-template-columns: 100px 1fr 52px; }
+      .card h3 { font-size: 16px; }
+      .tab { padding: 8px 12px; font-size: 12px; }
+      .btn, button { font-size: 14px; padding: 10px 12px; }
+      .guide-box { width: min(95vw, 800px); padding: 14px 16px; bottom: 12px; }
+      .guide-title { font-size: 14px; }
+      .guide-close { font-size: 16px; padding: 4px; min-width: 28px; min-height: 28px; display: flex; align-items: center; justify-content: center; }
+      .guide-minimize { font-size: 14px; min-width: 28px; min-height: 28px; }
+      .guide-content { font-size: 13px; }
+      .guide-btn { padding: 6px 10px; font-size: 11px; }
+    }
+
+    @media (max-width: 640px) {
+      body { 
+        padding: 10px;
+        min-height: 100dvh;
+      }
+      .container {
+        padding: 0;
+      }
+      .back-btn {
+        top: 10px;
+        left: 10px;
+        padding: 6px 10px;
+        font-size: 13px;
+        border-radius: 8px;
+      }
+      .theme-dock {
+        top: 10px;
+        left: auto;
+        right: 50px;
+        gap: 6px;
+      }
+      .theme-trigger {
+        font-size: 18px;
+      }
+      .theme-option {
+        font-size: 14px;
+        padding: 6px 8px;
+      }
+      .glossary-btn {
+        right: 10px;
+        bottom: 10px;
+        font-size: 14px;
+        padding: 8px 10px;
+        border-radius: 8px;
+      }
+      .shell {
+        margin-top: 48px;
+        border-radius: 12px;
+        max-width: 100%;
+      }
+      .head {
+        padding: 14px 12px 12px;
+      }
+      .head h1 {
+        font-size: 18px;
+        margin-bottom: 6px;
+      }
+      .head p {
+        font-size: 12px;
+        margin-bottom: 12px;
+      }
+      .tabs {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+      }
+      .tab {
+        padding: 6px 10px;
+        font-size: 11px;
+        border-radius: 8px;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+      }
+      .body {
+        padding: 10px;
+      }
+      .stage {
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .card {
+        padding: 12px;
+        border-radius: 10px;
+      }
+      .card h3 {
+        font-size: 14px;
+        margin-bottom: 10px;
+      }
+      .card p {
+        font-size: 12px;
+      }
+      .controls {
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .controls > * {
+        min-width: 0;
+      }
+      .controls select {
+        width: 100%;
+        flex: 1 1 100%;
+      }
+      #tokenPreset,
+      #comboPrompt,
+      #comboSpeed {
+        width: 100%;
+        max-width: 100%;
+      }
+      .btn, button {
+        font-size: 12px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        min-height: 40px;
+      }
+      .primary {
+        min-height: 44px;
+      }
+      .mode-switch button {
+        padding: 6px 10px;
+        font-size: 11px;
+      }
+      .token-wrap {
+        gap: 6px;
+      }
+      .bubble {
+        font-size: 13px;
+        padding: 10px;
+      }
+      .status,
+      .muted,
+      .meta {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      .bars {
+        gap: 6px;
+      }
+      .bar-row {
+        gap: 6px;
+      }
+      .guide-box {
+        position: fixed;
+        bottom: 10px;
+        left: 10px;
+        right: 10px;
+        width: auto;
+        max-width: calc(100vw - 20px);
+        transform: none;
+        padding: 12px 14px;
+        border-radius: 10px;
+        max-height: min(48dvh, 340px);
+        overflow: hidden;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+      }
+      .guide-header {
+        gap: 8px;
+        align-items: center;
+      }
+      .guide-title {
+        font-size: 13px;
+        margin: 0;
+        flex: 1;
+        min-width: 0;
+      }
+      .guide-close {
+        font-size: 18px;
+        padding: 6px;
+        min-width: 32px;
+        min-height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .guide-minimize {
+        min-width: 32px;
+        min-height: 32px;
+        font-size: 16px;
+      }
+      .guide-content {
+        font-size: 12px;
+        margin: 0;
+        line-height: 1.5;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+      .guide-actions {
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .guide-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+        min-height: 40px;
+      }
+      .glossary {
+        width: 90vw;
+        max-width: 90vw;
+        height: 80vh;
+        max-height: 80vh;
+      }
+      .g-head {
+        padding: 12px;
+        font-size: 14px;
+      }
+      .g-body {
+        padding: 0;
+      }
+      .g-item {
+        border-radius: 8px;
+        padding: 0;
+        margin: 8px;
+      }
+      .g-term {
+        padding: 10px;
+        font-size: 13px;
+      }
+      .g-short {
+        font-size: 12px;
+      }
+      .g-detail {
+        font-size: 11px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      body {
+        padding: 8px;
+      }
+      .back-btn {
+        top: 8px;
+        left: 8px;
+        padding: 5px 8px;
+        font-size: 12px;
+      }
+      .theme-dock {
+        top: 8px;
+        right: 45px;
+        gap: 4px;
+      }
+      .theme-trigger {
+        font-size: 16px;
+      }
+      .glossary-btn {
+        right: 8px;
+        bottom: 8px;
+        font-size: 13px;
+        padding: 6px 8px;
+      }
+      .shell {
+        margin-top: 44px;
+        border-radius: 10px;
+      }
+      .head {
+        padding: 12px 10px 10px;
+      }
+      .head h1 {
+        font-size: 16px;
+      }
+      .head p {
+        font-size: 11px;
+      }
+      .tab {
+        padding: 5px 8px;
+        font-size: 10px;
+      }
+      .body {
+        padding: 8px;
+      }
+      .card {
+        padding: 10px;
+      }
+      .card h3 {
+        font-size: 13px;
+      }
+      .btn, button {
+        font-size: 11px;
+        padding: 7px 8px;
+      }
+      .guide-box {
+        position: fixed;
+        bottom: 8px;
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-width: calc(100vw - 16px);
+        transform: none;
+        padding: 10px 12px;
+        max-height: min(50dvh, 320px);
+      }
+      .guide-header {
+        gap: 6px;
+        align-items: center;
+      }
+      .guide-title {
+        font-size: 12px;
+        flex: 1;
+        min-width: 0;
+      }
+      .guide-close {
+        font-size: 16px;
+        padding: 6px;
+        min-width: 32px;
+        min-height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .guide-minimize {
+        min-width: 30px;
+        min-height: 30px;
+        font-size: 14px;
+      }
+      .guide-content {
+        font-size: 11px;
+      }
+      .guide-btn {
+        padding: 5px 8px;
+        font-size: 10px;
+      }
     }
   </style>
 </head>
@@ -697,8 +1169,8 @@
 
 <div class="shell">
   <div class="head">
-    <h1>Demo 3: How does this all work together?</h1>
-    <p>Each concept has its own mini-demo. The final tab combines all mechanics in one full generation loop.</p>
+    <h1>How does this all work together?</h1>
+    <p>Each concept has its own guided section. The final tab combines all mechanics in one full generation loop.</p>
     <div class="tabs" id="tabs"></div>
   </div>
   <div class="body">
@@ -767,7 +1239,7 @@
       <div class="card">
         <h3>Part 4: <span class="tooltip" data-glossary="stoptoken">Stop token<span class="tooltip-text">A special token that tells generation to halt.</span></span></h3>
         <div class="controls">
-          <button class="primary" id="stopPlayBtn">Play Stop-Token Demo</button>
+          <button class="primary" id="stopPlayBtn">Play Stop-Token Sequence</button>
           <button id="stopResetBtn">Reset</button>
         </div>
         <div class="muted">Engine stream</div>
@@ -786,7 +1258,7 @@
 
     <section class="stage two-col" id="stage-4">
       <div class="card">
-        <h3>Part 5: Combined demo (all mechanics)</h3>
+        <h3>Part 5: Combined generation (all mechanics)</h3>
         <div class="controls">
           <label for="comboPrompt">Prompt</label>
           <select id="comboPrompt"></select>
@@ -816,6 +1288,18 @@
       </div>
     </section>
   </div>
+</div>
+
+<div class="guide-box" id="guideBox">
+  <div class="guide-header">
+    <h3 class="guide-title" id="guideTitle"></h3>
+    <div class="guide-header-controls">
+      <button class="guide-minimize" id="guideMinimize" aria-label="Minimize guide" title="Minimize guide">−</button>
+      <button class="guide-close" id="guideClose" aria-label="Close guide">✕</button>
+    </div>
+  </div>
+  <p class="guide-content" id="guideContent"></p>
+  <div class="guide-actions" id="guideActions"></div>
 </div>
 
 <script>
@@ -1028,6 +1512,11 @@ const prompts = {
   city: 'Recommend a compact city commuter with strong efficiency.',
   truck: 'What off-road capable truck should I consider?'
 };
+const promptLabels = {
+  suv: 'SUV: Family comfort',
+  city: 'City: Compact + efficient',
+  truck: 'Truck: Off-road capable'
+};
 const glossaryEntries = {
   temperature: {
     term: 'Temperature',
@@ -1065,6 +1554,49 @@ const nav = document.getElementById('tabs');
 const stages = Array.from(document.querySelectorAll('.stage'));
 let activeStage = 0;
 
+const guideContent = {
+  0: {
+    title: '📖 Part 1: Understanding Tokens',
+    content: '<strong>What is a token?</strong> A token is the smallest piece of text an LLM can read or generate. Examples: "hello" = 1 token, but "unbelievable" splits into 3 tokens: "un" + "believ" + "able". Tokens can be whole words, parts of words, or punctuation.<br><br><strong>Why are tokens important?</strong> LLMs do not think in words or sentences - they think in tokens. The model vocabulary is a fixed list of 30,000 to 100,000 tokens. Everything the model reads and writes flows through this token vocabulary.<br><br><strong>How it works:</strong> Type a prompt and click Tokenize to see how your text breaks into tokens. Notice how longer words split into multiple pieces!',
+    actions: [
+      { label: 'Hide Guide', type: 'dismiss' },
+      { label: 'Next: Sampling', type: 'next' }
+    ]
+  },
+  1: {
+    title: '📖 Part 2: Sampling The Next Token',
+    content: '<strong>What is sampling?</strong> After reading the current context, the model scores many possible next tokens and converts those scores into probabilities.<br><br><strong>Why this matters:</strong> The model is not selecting from one fixed sentence. It is choosing one token at a time from competing options, each with a likelihood.<br><br><strong>How to use this tab:</strong> Click <strong>Sample Next Token</strong>. Watch the candidate list and percentages, then see which token gets appended. Repeat to see how each new token changes the next set of probabilities.',
+    actions: [
+      { label: 'Hide Guide', type: 'dismiss' },
+      { label: 'Next: Temperature', type: 'next' }
+    ]
+  },
+  2: {
+    title: '📖 Part 3: Temperature Changes Choice Style',
+    content: '<strong>What temperature does:</strong> Temperature reshapes the probability curve before sampling. It does not add knowledge - it changes how boldly the model picks from what it already knows.<br><br><strong>Low temperature:</strong> Safer and more predictable output because top tokens dominate.<br><br><strong>High temperature:</strong> More variety and risk because lower-probability tokens get more chance.<br><br><strong>How to use this tab:</strong> Move the slider and compare how the bars change at each value.',
+    actions: [
+      { label: 'Hide Guide', type: 'dismiss' },
+      { label: 'Next: Stop Token', type: 'next' }
+    ]
+  },
+  3: {
+    title: '📖 Part 4: Stop Token Ends Generation',
+    content: '<strong>What is a stop token?</strong> It is a special token that tells the model to stop generating.<br><br><strong>Why this matters:</strong> Without it, generation would continue indefinitely. The stop token gives the model a learned endpoint.<br><br><strong>How to use this tab:</strong> Run the stop-token sequence and observe that generation halts when the stop token is selected, even if more words could have been produced.',
+    actions: [
+      { label: 'Hide Guide', type: 'dismiss' },
+      { label: 'Next: Combined View', type: 'next' }
+    ]
+  },
+  4: {
+    title: '📖 Part 5: Full Generation Loop',
+    content: '<strong>This is the complete pipeline:</strong> tokenization → probability scoring → temperature adjustment → token sampling → repeat until stop token.<br><br><strong>What to look for:</strong> The model is not writing the whole answer at once. It loops one token at a time, constantly updating context.<br><br><strong>How to use this tab:</strong> Start the combined generation view and watch each cycle. This is the same core loop used in real LLM text generation.',
+    actions: [
+      { label: 'Hide Guide', type: 'dismiss' },
+      { label: 'Restart Walkthrough', type: 'restart' }
+    ]
+  }
+};
+
 function renderStageNav() {
   nav.innerHTML = '';
   stageTitles.forEach((title, i) => {
@@ -1079,6 +1611,9 @@ function setStage(i) {
   activeStage = i;
   stages.forEach((s, idx) => s.classList.toggle('active', idx === i));
   renderStageNav();
+  if (isGuidedMode) {
+    updateGuide(i);
+  }
 }
 
 function pseudoTokenize(text) {
@@ -1223,14 +1758,15 @@ function refreshStage1PromptPreview() {
 function initPromptSelectors() {
   tokenPreset.innerHTML = '';
   Object.entries(prompts).forEach(([k, v]) => {
+    const label = promptLabels[k] || v;
     const preset = document.createElement('option');
     preset.value = k;
-    preset.textContent = v;
+    preset.textContent = label;
     tokenPreset.appendChild(preset);
 
     const o = document.createElement('option');
     o.value = k;
-    o.textContent = v;
+    o.textContent = label;
     document.getElementById('comboPrompt').appendChild(o);
   });
 
@@ -1352,7 +1888,7 @@ function resetStopStage() {
   stopStream.innerHTML = '';
   stopOutput.textContent = stopStarter;
   stopStatus.textContent = 'Press Play to show generation halting on stop token.';
-  stopPlayBtn.textContent = 'Play Stop-Token Demo';
+  stopPlayBtn.textContent = 'Play Stop-Token Sequence';
 }
 function runStopStage() {
   if (stopTimer || stopIndex > 0) {
@@ -1590,6 +2126,45 @@ function openGlossary(keyToScroll) {
 }
 function closeGlossary() { document.getElementById('glossaryPanel').classList.remove('open'); }
 
+function updateGuide(stageIndex) {
+  const guide = guideContent[stageIndex];
+  if (!guide) return;
+  
+  const box = document.getElementById('guideBox');
+  const titleEl = document.getElementById('guideTitle');
+  const contentEl = document.getElementById('guideContent');
+  const actionsEl = document.getElementById('guideActions');
+  const minimizeBtn = document.getElementById('guideMinimize');
+  
+  titleEl.textContent = guide.title;
+  contentEl.innerHTML = guide.content;
+  
+  actionsEl.innerHTML = '';
+  guide.actions.forEach((action, idx) => {
+    const actionObj = typeof action === 'string'
+      ? { label: action, type: action.toLowerCase().includes('continue') ? 'next' : 'dismiss' }
+      : action;
+    const btn = document.createElement('button');
+    btn.className = 'guide-btn' + (idx === guide.actions.length - 1 ? ' primary' : '');
+    btn.textContent = actionObj.label;
+    btn.onclick = () => {
+      if (actionObj.type === 'dismiss') {
+        box.classList.add('hidden');
+      } else if (actionObj.type === 'next') {
+        setStage(Math.min(activeStage + 1, stages.length - 1));
+      } else if (actionObj.type === 'restart') {
+        setStage(0);
+      }
+    };
+    actionsEl.appendChild(btn);
+  });
+
+  // If user minimized it before, keep minimize icon in sync.
+  minimizeBtn.textContent = box.classList.contains('minimized') ? '+' : '−';
+  
+  box.classList.remove('hidden');
+}
+
 document.addEventListener('click', (e) => {
   const tooltipBox = e.target.closest('.tooltip-text');
   const glossaryPanel = document.getElementById('glossaryPanel');
@@ -1615,6 +2190,29 @@ applyPresetTheme('current');
 initProceduralBackground();
 initPromptSelectors();
 renderStageNav();
+
+// Check if in guided learning mode
+const urlParams = new URLSearchParams(window.location.search);
+const isGuidedMode = urlParams.get('guided') === 'true';
+
+if (isGuidedMode) {
+  const guideBoxEl = document.getElementById('guideBox');
+  const guideCloseEl = document.getElementById('guideClose');
+  const guideMinimizeEl = document.getElementById('guideMinimize');
+
+  guideCloseEl.onclick = () => guideBoxEl.classList.add('hidden');
+  guideMinimizeEl.onclick = () => {
+    guideBoxEl.classList.toggle('minimized');
+    guideMinimizeEl.textContent = guideBoxEl.classList.contains('minimized') ? '+' : '−';
+  };
+
+  guideBoxEl.classList.remove('minimized');
+  guideMinimizeEl.textContent = '−';
+  updateGuide(0);
+} else {
+  document.getElementById('guideBox').classList.add('hidden');
+}
+
 resetStopStage();
 renderComboTempValue();
 resetCombo();
