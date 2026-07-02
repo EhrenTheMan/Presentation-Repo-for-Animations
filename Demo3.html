@@ -486,12 +486,43 @@
       align-items: center;
       font-size: 12px;
     }
+    .row.selected-row {
+      border: 1px solid rgba(255, 228, 129, 0.85);
+      border-radius: 10px;
+      padding: 4px 6px;
+      margin: 1px 0;
+      background: linear-gradient(120deg, rgba(104, 87, 21, 0.32), rgba(51, 93, 127, 0.28));
+      box-shadow: 0 0 0 2px rgba(255, 214, 94, 0.2), 0 6px 14px rgba(0, 0, 0, 0.28);
+    }
+    .row.selected-row .w {
+      color: #fff6cf;
+      font-weight: 700;
+    }
+    .row.selected-row .track {
+      border-color: rgba(255, 227, 140, 0.82);
+      box-shadow: 0 0 0 1px rgba(255, 224, 128, 0.22);
+    }
+    .chosen-mark {
+      color: #ffe07f;
+      font-weight: 800;
+      margin-right: 5px;
+    }
     .w {
       font-family: 'Consolas', 'Courier New', Courier, monospace;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       color: #d2e8fa;
+    }
+    .pct {
+      text-align: right;
+      color: #a8bfd2;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    .pct.picked {
+      color: #ffe8a8;
+      font-weight: 700;
     }
     .track {
       height: 15px;
@@ -506,7 +537,10 @@
       transition: width 0.25s ease;
     }
     .fill.after { background: linear-gradient(120deg, rgba(13, 181, 119, 0.96), rgba(82, 226, 173, 0.9)); }
-    .fill.selected { filter: brightness(1.12); }
+    .fill.selected {
+      filter: brightness(1.35) saturate(1.35);
+      box-shadow: inset 0 0 0 1px rgba(255, 244, 200, 0.45);
+    }
 
     .status {
       margin-top: 9px;
@@ -764,6 +798,21 @@
     }
     .guide-btn.primary:hover {
       background: linear-gradient(120deg, rgba(33, 157, 232, 0.98), rgba(60, 199, 255, 0.98));
+    }
+
+    .highlight-common {
+      background: linear-gradient(120deg, rgba(24, 192, 137, 0.25), rgba(24, 192, 137, 0.15));
+      border-radius: 2px;
+      padding: 1px 3px;
+      color: #a8ffd8;
+      font-weight: 500;
+    }
+    .highlight-different {
+      background: linear-gradient(120deg, rgba(245, 140, 66, 0.18), rgba(245, 140, 66, 0.08));
+      border-radius: 2px;
+      padding: 1px 3px;
+      color: #ffc891;
+      font-weight: 500;
     }
 
     @keyframes slideUp {
@@ -1050,6 +1099,80 @@
       }
     }
 
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      background: rgba(12, 23, 36, 0.5);
+      border: 1px solid rgba(128, 182, 216, 0.24);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .comparison-table thead {
+      background: linear-gradient(90deg, rgba(18, 34, 50, 0.95), rgba(18, 34, 50, 0.85));
+      border-bottom: 2px solid rgba(132, 185, 219, 0.36);
+    }
+    .comparison-table th {
+      padding: 10px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: #d5e7f4;
+      text-transform: uppercase;
+    }
+    .comparison-table th:first-child {
+      width: 60px;
+      color: #9cb9cf;
+    }
+    .comparison-table th:nth-child(2) {
+      background: linear-gradient(to right, rgba(31, 100, 162, 0.24), transparent);
+      color: #7eb8ff;
+    }
+    .comparison-table th:nth-child(3) {
+      color: #d5e7f4;
+    }
+    .comparison-table th:nth-child(4) {
+      background: linear-gradient(to right, rgba(245, 140, 66, 0.18), transparent);
+      color: #ffb88c;
+    }
+    .comparison-table tbody tr {
+      border-bottom: 1px solid rgba(128, 182, 216, 0.15);
+      transition: background 0.2s ease;
+    }
+    .comparison-table tbody tr:hover {
+      background: rgba(22, 54, 82, 0.4);
+    }
+    .comparison-table td {
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #d5e7f4;
+      vertical-align: top;
+      max-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-wrap: break-word;
+      white-space: normal;
+    }
+    .comparison-table td:first-child {
+      font-weight: 600;
+      color: #9cb9cf;
+      width: 60px;
+      text-align: center;
+    }
+    .comparison-empty {
+      text-align: center;
+      padding: 30px;
+      color: #8fa8bd;
+      font-size: 14px;
+    }
+    .comparison-empty .status {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #6b8fa5;
+    }
+
     @media (max-width: 420px) {
       body {
         padding: 8px;
@@ -1287,6 +1410,20 @@
         <div class="bars" id="comboBars"></div>
       </div>
     </section>
+
+    <section class="stage" id="stage-5">
+      <div class="card" style="grid-column: 1 / -1;">
+        <h3>Part 6: Temperature Comparison</h3>
+        <div class="muted">Run multiple generations at different temperatures to see how it affects output diversity.</div>
+        <div class="controls" style="margin-top: 14px;">
+          <label for="comparisonPrompt">Prompt</label>
+          <select id="comparisonPrompt"></select>
+          <button class="primary" id="comparisonGenerateBtn">Generate (3 temps)</button>
+          <button id="comparisonResetBtn">Reset History</button>
+        </div>
+        <div id="comparisonContainer" style="margin-top: 16px;"></div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -1506,7 +1643,7 @@ function initProceduralBackground() {
   }, { once: true });
 }
 
-const stageTitles = ['1. Tokens', '2. Sampling', '3. Temperature', '4. Stop Token', '5. Combined'];
+const stageTitles = ['1. Tokens', '2. Sampling', '3. Temperature', '4. Stop Token', '5. Combined', '6. Comparison'];
 const prompts = {
   suv: 'I need a full-size SUV with lots of family room and comfort features.',
   city: 'Recommend a compact city commuter with strong efficiency.',
@@ -1592,6 +1729,14 @@ const guideContent = {
     content: '<strong>This is the complete pipeline:</strong> tokenization → probability scoring → temperature adjustment → token sampling → repeat until stop token.<br><br><strong>What to look for:</strong> The model is not writing the whole answer at once. It loops one token at a time, constantly updating context.<br><br><strong>How to use this tab:</strong> Start the combined generation view and watch each cycle. This is the same core loop used in real LLM text generation.',
     actions: [
       { label: 'Hide Guide', type: 'dismiss' },
+      { label: 'Next: Comparison', type: 'next' }
+    ]
+  },
+  5: {
+    title: '📖 Part 6: Visualizing Temperature Effects',
+    content: '<strong>What this demonstrates:</strong> Run the same prompt multiple times at different temperatures and watch the patterns emerge. Each column (Low 0.2 / Med 1.0 / High 2.0) shows how temperature reshapes choices independently.<br><br><strong>What the colors mean:</strong> <span style="color: #a8ffd8;"><strong>Green (common)</strong></span> words appear in all runs at that temperature - these are the predictable core. <span style="color: #ffc891;"><strong>Orange (different)</strong></span> words vary by run - these show temperature\'s effect on randomness.<br><br><strong>What to look for:</strong> Notice how low temperature locks in the same descriptors, while high temperature explores wildly different word choices. Same model, same knowledge, just different boldness in choosing.',
+    actions: [
+      { label: 'Hide Guide', type: 'dismiss' },
       { label: 'Restart Walkthrough', type: 'restart' }
     ]
   }
@@ -1644,13 +1789,21 @@ function weightedSample(probs) {
   }
   return probs.length - 1;
 }
+function appendToken(text, token) {
+  const t = String(token || '').trim();
+  if (!t || t === '<|stop|>') return text;
+  const punctuationOnly = /^[,.!?;:]+$/.test(t);
+  const base = String(text || '').trimEnd();
+  return punctuationOnly ? `${base}${t}` : `${base}${base ? ' ' : ''}${t}`;
+}
 function renderBars(container, tokens, probs, mode = '', selectedIndex = -1) {
   container.innerHTML = '';
   tokens.forEach((tok, i) => {
     const pct = (probs[i] * 100).toFixed(1);
+    const picked = i === selectedIndex;
     const row = document.createElement('div');
-    row.className = 'row';
-    row.innerHTML = `<div class="w">${tok}</div><div class="track"><div class="fill ${mode} ${i === selectedIndex ? 'selected' : ''}" style="width:${Math.max(2, pct)}%"></div></div><div style="text-align:right;color:#aaa;">${pct}%</div>`;
+    row.className = 'row' + (picked ? ' selected-row' : '');
+    row.innerHTML = `<div class="w">${picked ? '<span class="chosen-mark">✓</span>' : ''}${tok}</div><div class="track"><div class="fill ${mode} ${picked ? 'selected' : ''}" style="width:${Math.max(2, pct)}%"></div></div><div class="pct ${picked ? 'picked' : ''}">${picked ? '✓ ' : ''}${pct}%</div>`;
     container.appendChild(row);
   });
 }
@@ -1768,6 +1921,11 @@ function initPromptSelectors() {
     o.value = k;
     o.textContent = label;
     document.getElementById('comboPrompt').appendChild(o);
+
+    const c = document.createElement('option');
+    c.value = k;
+    c.textContent = label;
+    document.getElementById('comparisonPrompt').appendChild(c);
   });
 
   tokenPreset.value = 'suv';
@@ -1775,6 +1933,7 @@ function initPromptSelectors() {
   setTokenPromptMode('preset');
 
   document.getElementById('comboPrompt').value = 'suv';
+  document.getElementById('comparisonPrompt').value = 'suv';
   refreshStage1PromptPreview();
   document.getElementById('comboUserPrompt').textContent = prompts.suv;
 }
@@ -1840,7 +1999,7 @@ document.getElementById('sampleOnceBtn').addEventListener('click', () => {
   const idx = weightedSample(step.probs);
   renderBars(sampleBars, step.candidates, step.probs, '', idx);
   const chosen = step.candidates[idx];
-  sampleResult.textContent += chosen;
+  sampleResult.textContent = appendToken(sampleResult.textContent, chosen);
   sampleStepIdx += 1;
   if (sampleStepIdx >= sampleTimeline.length) {
     sampleStatus.textContent = `Sampled "${chosen.trim()}". Sentence complete.`;
@@ -1915,7 +2074,7 @@ function runStopStage() {
       clearInterval(stopTimer);
       stopTimer = null;
     } else {
-      stopOutput.textContent += tok;
+      stopOutput.textContent = appendToken(stopOutput.textContent, tok);
       stopStatus.textContent = 'Generating token-by-token...';
     }
   }, 350);
@@ -1937,18 +2096,18 @@ const comboPlans = {
   suv: {
     starter: 'The Jeep Wagoneer is ',
     timeline: [
-      [' a', ' truly', ' definitely', ' arguably', ' easily'],
-      [' spacious', ' premium', ' luxurious', ' family-sized', ' comfortable'],
-      [' full-size', ' three-row', ' family', ' modern', ' refined'],
-      [' SUV', ' option', ' vehicle', ' choice', ' model'],
-      [' with', ' offering', ' featuring', ' boasting', ' delivering'],
-      [' three-row', ' premium', ' heated', ' quilted', ' captain\'s'],
-      [' seating', ' interiors', ' cabins', ' comfort', ' layouts'],
-      [' and', ',', ' plus', ' alongside', ' with'],
-      [' driver-focused', ' upscale', ' refined', ' modern', ' luxurious'],
-      [' comfort', ' tech', ' features', ' details', ' cabins'],
-      [' features', ' touches', ' upgrades', ' amenities', ' options'],
-      ['.', '!', ',', ' for', ' overall'],
+      [' a', ' a', ' a very', ' an especially', ' a notably'],
+      [' premium', ' spacious', ' refined', ' comfortable', ' capable'],
+      [' full-size', ' three-row', ' family-focused', ' luxury', ' versatile'],
+      [' SUV', ' SUV', ' SUV', ' option', ' vehicle'],
+      [' with', ' offering', ' featuring', ' that includes', ' that delivers'],
+      [' three-row', ' generous', ' family-friendly', ' upscale', ' comfortable'],
+      [' seating', ' cabin space', ' interior room', ' accommodations', ' layouts'],
+      [' and', ' plus', ' along with', ' together with', ' alongside'],
+      [' modern', ' advanced', ' practical', ' thoughtful', ' premium'],
+      [' comfort', ' safety', ' tech', ' convenience', ' infotainment'],
+      [' features', ' amenities', ' options', ' touches', ' systems'],
+      ['.', '.', '!', '.', '.'],
       ['<|stop|>']
     ]
   },
@@ -1966,7 +2125,7 @@ const comboPlans = {
       [' streets', ' roads', ' parking', ' commutes', ' traffic'],
       [' and', ',', ' plus', ' while', ' yet'],
       [' great', ' impressive', ' strong', ' excellent', ' solid'],
-      [' fuel', ' energy', ' battery', ' driving', ' overall'],
+      [' power', ' energy', ' battery', ' driving', ' overall'],
       [' efficiency', ' economy', ' range', ' performance', ' costs'],
       ['.', '!', ',', ' overall', ' too'],
       ['<|stop|>']
@@ -1999,12 +2158,13 @@ function currentComboPlan() {
 }
 
 function getComboBaseProbs(step, count) {
-  // Build a descending distribution sized to the candidate list for this step.
+  // Build a balanced distribution so temperature changes have visible effect.
   if (count <= 1) return [1];
-  const preset = [0.42, 0.24, 0.16, 0.11, 0.07];
-  const shift = Math.min(0.10, step * 0.012);
+  // More uniform baseline: temp=0.2 heavily favors top, temp=1.0 shows variety, temp=2.0 spreads widely
+  const preset = [0.35, 0.25, 0.20, 0.12, 0.08];
+  const shift = Math.min(0.06, step * 0.008);
   const seeded = Array.from({ length: count }, (_, i) => preset[i] ?? Math.max(0.03, preset[preset.length - 1] - 0.01 * (i - (preset.length - 1))));
-  const arr = seeded.map((v, i) => Math.max(0.02, v - shift * i + (i === 0 ? shift * 0.4 : 0)));
+  const arr = seeded.map((v, i) => Math.max(0.02, v - shift * i + (i === 0 ? shift * 0.25 : 0)));
   const s = arr.reduce((a, b) => a + b, 0);
   return arr.map(v => v / s);
 }
@@ -2058,7 +2218,7 @@ function comboStep() {
   renderBars(comboBars, candidates, after, 'after', selectedIdx);
   combo.generated.push(selected);
   if (selected !== '<|stop|>') {
-    comboOutput.textContent += selected;
+    comboOutput.textContent = appendToken(comboOutput.textContent, selected);
     comboPhaseStatus.textContent = `Sampled "${selected.trim()}" after temperature ${temp.toFixed(1)}.`;
   } else {
     comboPhaseStatus.textContent = 'Stop token sampled. Combined generation halted.';
@@ -2093,6 +2253,156 @@ document.getElementById('comboStepBtn').addEventListener('click', () => {
 });
 document.getElementById('comboPrompt').addEventListener('change', resetCombo);
 comboTempSlider.addEventListener('input', renderComboTempValue);
+
+// Temperature Comparison Tab
+let comparisonHistory = [];
+
+function currentComparisonPlan() {
+  const key = document.getElementById('comparisonPrompt').value;
+  return comboPlans[key] || comboPlans.suv;
+}
+
+function generateComparison() {
+  const plan = currentComparisonPlan();
+  const results = {};
+  
+  for (const temp of [0.2, 1.0, 2.0]) {
+    const generated = [];
+    let done = false;
+    let stepIdx = 0;
+    let text = plan.starter;
+    
+    while (!done && stepIdx < plan.timeline.length) {
+      const candidates = plan.timeline[stepIdx];
+      const probs = getComboBaseProbs(stepIdx, candidates.length);
+      const after = softmaxTemp(probs, temp);
+      const selectedIdx = weightedSample(after);
+      const selected = candidates[selectedIdx] ?? candidates[0];
+      generated.push(selected);
+      
+      if (selected === '<|stop|>') {
+        done = true;
+      } else {
+        text = appendToken(text, selected);
+      }
+      stepIdx++;
+    }
+    
+    results[temp.toFixed(1)] = text;
+  }
+  
+  comparisonHistory.push(results);
+  renderComparisonTable();
+}
+
+function findCommonPhrases(texts) {
+  if (texts.length === 0) return [];
+  if (texts.length === 1) return [];
+  
+  const words = texts.map(t => t.toLowerCase().split(/\s+/));
+  const common = [];
+  
+  // Find word sequences that appear in ALL texts
+  const firstWords = words[0];
+  for (let i = 0; i < firstWords.length; i++) {
+    for (let len = Math.min(5, firstWords.length - i); len > 0; len--) {
+      const phrase = firstWords.slice(i, i + len).join(' ');
+      const inAll = words.every(w => w.join(' ').includes(phrase));
+      if (inAll && phrase.trim().length > 2) {
+        common.push(phrase);
+      }
+    }
+  }
+  
+  // Sort by length (longest first) to avoid overlaps
+  return [...new Set(common)].sort((a, b) => b.length - a.length);
+}
+
+function highlightText(text, commonPhrases) {
+  if (!commonPhrases || commonPhrases.length === 0) {
+    return text;
+  }
+  
+  let html = text;
+  const commonPhrasesRegex = commonPhrases
+    .filter(p => p.trim().length > 0)
+    .map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|');
+  
+  if (!commonPhrasesRegex) return text;
+  
+  const regex = new RegExp(`\\b(${commonPhrasesRegex})\\b`, 'gi');
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  
+  const tempRegex = new RegExp(`\\b(${commonPhrasesRegex})\\b`, 'gi');
+  while ((match = tempRegex.exec(html)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ text: html.substring(lastIndex, match.index), isCommon: false });
+    }
+    parts.push({ text: match[0], isCommon: true });
+    lastIndex = match.index + match[0].length;
+  }
+  
+  if (lastIndex < html.length) {
+    parts.push({ text: html.substring(lastIndex), isCommon: false });
+  }
+  
+  return parts.map(p => 
+    p.isCommon 
+      ? `<span class="highlight-common">${p.text}</span>`
+      : `<span class="highlight-different">${p.text}</span>`
+  ).join('');
+}
+
+function renderComparisonTable() {
+  const container = document.getElementById('comparisonContainer');
+  
+  if (comparisonHistory.length === 0) {
+    container.innerHTML = '<div class="comparison-empty">No generations yet.<div class="status">Click <strong>Generate (3 temps)</strong> to compare outputs.</div></div>';
+    return;
+  }
+  
+  // Prepare data for each temperature
+  const byTemp = { '0.2': [], '1.0': [], '2.0': [] };
+  comparisonHistory.forEach(run => {
+    byTemp['0.2'].push(run['0.2']);
+    byTemp['1.0'].push(run['1.0']);
+    byTemp['2.0'].push(run['2.0']);
+  });
+  
+  // Find common phrases for each temperature
+  const commonByTemp = {
+    '0.2': findCommonPhrases(byTemp['0.2']),
+    '1.0': findCommonPhrases(byTemp['1.0']),
+    '2.0': findCommonPhrases(byTemp['2.0'])
+  };
+  
+  let html = '<table class="comparison-table"><thead><tr><th>Run</th><th title="Low temperature">Low (0.2)</th><th title="Medium temperature">Med (1.0)</th><th title="High temperature">High (2.0)</th></tr></thead><tbody>';
+  
+  comparisonHistory.forEach((run, idx) => {
+    const low = highlightText(run['0.2'], commonByTemp['0.2']);
+    const med = highlightText(run['1.0'], commonByTemp['1.0']);
+    const high = highlightText(run['2.0'], commonByTemp['2.0']);
+    
+    html += `<tr>
+      <td>${idx + 1}</td>
+      <td>${low}</td>
+      <td>${med}</td>
+      <td>${high}</td>
+    </tr>`;
+  });
+  
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+document.getElementById('comparisonGenerateBtn').addEventListener('click', generateComparison);
+document.getElementById('comparisonResetBtn').addEventListener('click', () => {
+  comparisonHistory = [];
+  renderComparisonTable();
+});
 
 // Glossary
 function populateGlossary() {
